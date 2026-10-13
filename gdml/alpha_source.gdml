@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Minimal, self-contained stand-in for your CAD->GDML alpha source.
+  The code extracts the logical volume "AlphaSourceLV" by name and places
+  it inside the LXe; the <setup>/<world> below only makes the file valid on
+  its own and is ignored by GetVolume().
+
+  Replace this with your CAD export. Typical route: FreeCAD / STEP -> GDML
+  via a mesh (G4TessellatedSolid). Keep the top LV named "AlphaSourceLV"
+  (or change fSourceLVName in DetectorConstruction). Tessellated solids are
+  navigation-heavy: simplify meshes and expect slower tracking + overlap
+  checks than these analytic tubes.
+
+  Material names use the G4_* NIST convention; the GDML reader builds them
+  through G4NistManager, so no <materials> block is needed.
+-->
+<gdml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="http://service-spi.web.cern.ch/service-spi/app/releases/GDML/schema/gdml.xsd">
+
+  <define/>
+  <materials/>
+
+  <solids>
+    <!-- GDML tube 'z' is the FULL length (Geant4 halves it internally). -->
+    <tube name="backingSolid" rmin="0" rmax="6"  z="1.0"  deltaphi="360" aunit="deg" lunit="mm"/>
+    <tube name="activeSolid"  rmin="0" rmax="4"  z="0.02" deltaphi="360" aunit="deg" lunit="mm"/>
+  </solids>
+
+  <structure>
+    <volume name="ActiveLayerLV">
+      <materialref ref="G4_Au"/>          <!-- thin active deposit stand-in -->
+      <solidref ref="activeSolid"/>
+    </volume>
+
+    <volume name="AlphaSourceLV">
+      <materialref ref="G4_STAINLESS-STEEL"/>   <!-- source backing/puck -->
+      <solidref ref="backingSolid"/>
+      <physvol name="activePV">
+        <volumeref ref="ActiveLayerLV"/>
+        <position name="activePos" unit="mm" x="0" y="0" z="0.49"/>
+      </physvol>
+    </volume>
+  </structure>
+
+  <setup name="Default" version="1.0">
+    <world ref="AlphaSourceLV"/>
+  </setup>
+</gdml>

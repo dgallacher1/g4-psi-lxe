@@ -1,0 +1,36 @@
+# Positron beam, G4Beamline-style, defined entirely at runtime via GPS.
+# Enters from -z (upstream of the cryostat) travelling +z into the LXe.
+
+/beam/mode gps
+
+/gps/particle e+
+/gps/number 1
+
+# Energy: monoenergetic here; swap for Gauss/User spectrum as needed.
+/gps/ene/type Mono
+/gps/ene/mono 5 MeV
+#/gps/ene/type Gauss
+#/gps/ene/sigma 0.1 MeV
+
+# Transverse spot: 2D Gaussian in the x-y plane at the source point.
+/gps/pos/type Beam
+/gps/pos/centre 0. 0. -260. mm
+/gps/pos/sigma_x 2. mm
+/gps/pos/sigma_y 2. mm
+
+# Momentum direction (pencil beam along +z).
+/gps/direction 0 0 1
+
+# --- Optional angular divergence -------------------------------------------
+# GPS 'beam2d' clusters directions about a reference axis; verify the axis
+# with rot1/rot2 before trusting absolute angles.
+#/gps/ang/type beam2d
+#/gps/ang/sigma_x 3. mrad
+#/gps/ang/sigma_y 3. mrad
+
+# --- To instead emit alphas from the imported source volume ----------------
+# /gps/particle alpha
+# /gps/ene/mono 5.486 MeV        # e.g. Am-241 principal line
+# /gps/pos/type Volume
+# /gps/pos/confine AlphaSource   # confine emission to the placed source PV
+# /gps/ang/type iso
