@@ -40,7 +40,11 @@ print(f"events {n_ev} | with LXe deposit {np.mean(edep > 0):.3f} | per event: me
 tot = st["edep_keV"].sum()
 by_pdg = {int(c): st["edep_keV"][st["pdg"] == c].sum() for c in np.unique(st["pdg"])}
 for c, e in sorted(by_pdg.items(), key=lambda kv: -kv[1])[:6]:
-    print(f"  {name(c):>6}: {100 * e / tot:5.3f} % of the deposited energy ({e / n_ev:.3f} keV/event)")
+    print(f"  {name(c):>6}: {100 * e / tot:5.1f} % of the deposited energy ({e / n_ev:.1f} keV/event)")
+if "niel_keV" in st:                                       # non-ionising share (nuclear stopping)
+    print(f"non-ionising part of the deposit: {100 * st['niel_keV'].sum() / tot:.4f} %")
+if np.all(st["edep_keV"] > 0):
+    print("note: every stored step has edep > 0 (/lxe/onlyEdep true?): trajectories below are not complete")
 prim = st["trackID"] == 1
 n_with_primary = len(np.unique(st["eventID"][prim]))
 print(f"primary enters the LXe in {n_with_primary} / {n_ev} events; "
@@ -61,7 +65,6 @@ if geo:
 
 species = sorted(by_pdg, key=lambda c: -by_pdg[c])[:6]
 ax[0, 2].bar([name(c) for c in species], [by_pdg[c] / n_ev for c in species])
-ax[0, 2].set_xticklabels([name(c) for c in species], rotation=45, ha='right')
 ax[0, 2].set(ylabel="keV per event", title="deposit by particle", yscale="log")
 
 # tracks of the first few events with LXe steps: black = beam particle, red e+, blue e-, grey other

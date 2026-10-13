@@ -53,6 +53,7 @@ void EventAction::EndOfEventAction(const G4Event* evt)
         man->FillNtupleDColumn(0, 11, h->kinE / keV);
         man->FillNtupleDColumn(0, 12, h->stepLen / mm);
         man->FillNtupleDColumn(0, 13, h->gtime / ns);
+        man->FillNtupleDColumn(0, 14, h->niel / keV);
         man->AddNtupleRow(0);
         totalEdep += h->edep;
       }

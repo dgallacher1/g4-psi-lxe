@@ -21,7 +21,8 @@ class XenonHit : public G4VHit
   G4int    trackID  = -1;
   G4int    parentID = -1;
   G4int    pdg      = 0;
-  G4double edep     = 0.;   // internal units (MeV)
+  G4double edep     = 0.;   // total deposit, internal units (MeV); includes niel
+  G4double niel     = 0.;   // non-ionising part of edep (MeV): nuclear stopping / recoils
   G4double kinE     = 0.;   // pre-step kinetic energy (MeV)
   G4double stepLen  = 0.;   // mm
   G4double gtime    = 0.;   // ns

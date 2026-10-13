@@ -5,9 +5,21 @@
 #include "G4AnalysisManager.hh"
 #include "G4Run.hh"
 #include "G4Threading.hh"
+#include "G4GenericMessenger.hh"
+
+G4String RunAction::sTag = "";
+
+RunAction::~RunAction() { delete fMessenger; }
 
 RunAction::RunAction()
 {
+  if (G4Threading::IsMasterThread()) {      // master only: the commands are not broadcast
+    fMessenger = new G4GenericMessenger(this, "/output/", "Output file control");
+    fMessenger->DeclareProperty("tag", sTag,
+        "Suffix for the next run's ROOT file: xenon_sim_<tag>.root (no dots)")
+        .SetToBeBroadcasted(false);
+  }
+
   auto* man = G4AnalysisManager::Instance();
   man->SetDefaultFileType("root");
   man->SetVerboseLevel(1);
@@ -29,6 +41,7 @@ RunAction::RunAction()
   man->CreateNtupleDColumn("kinE_keV");    // 11
   man->CreateNtupleDColumn("stepLen_mm");  // 12
   man->CreateNtupleDColumn("time_ns");     // 13
+  man->CreateNtupleDColumn("niel_keV");    // 14  non-ionising part of edep_keV (nuclear stopping)
   man->FinishNtuple();
 
   // --- ntuple 1: events ---
@@ -80,7 +93,9 @@ void RunAction::BeginOfRunAction(const G4Run*)
   if (G4Threading::IsMasterThread()) PrimaryGeneratorAction::RewindBeamFile();
 
   // Placeholder geometry can never be mistaken for CAD output: the file name says so.
-  G4AnalysisManager::Instance()->OpenFile(Geo::isDemo ? "xenon_sim_DEMO" : "xenon_sim");
+  G4String name = Geo::isDemo ? "xenon_sim_DEMO" : "xenon_sim";
+  if (!sTag.empty()) name += "_" + sTag;
+  G4AnalysisManager::Instance()->OpenFile(name);
 }
 
 void RunAction::EndOfRunAction(const G4Run*)
