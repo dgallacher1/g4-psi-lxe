@@ -5,6 +5,8 @@ cryostat holding liquid xenon, a GDML/CAD-imported alpha source submerged in
 the LXe, a runtime-configurable positron beam, and step-level scoring in the
 xenon. No optical physics.
 
+Author - David  G& Claude code
+
 ## Requirements
 - Geant4 >= 11.0, built with `GEANT4_USE_GDML=ON` (Xerces-C).
 - Multithread build recommended (analysis ntuple merging is enabled).
