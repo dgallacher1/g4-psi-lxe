@@ -1,0 +1,17 @@
+# Drive the sim from a G4Beamline phase-space file (e.g. built from the beam-profile
+# monitor measurements):   ./xenonSim macros/beam_file.mac
+#
+# BLTrackFile columns:  x y z Px Py Pz t PDGid EventID TrackID ParentID Weight
+# Mapped to the sim frame as  sim = (bl.z, bl.x, bl.y) + offset  (see PrimaryGeneratorAction.hh).
+# The file's reference plane (bl.z = 0 if you write it there) lands at the offset below.
+/run/initialize
+
+/beam/mode file
+/beam/file beam/positrons.txt
+/beam/offsetX -175. mm
+/beam/offsetY 0. mm
+/beam/offsetZ 0. mm
+
+# One event per record: set this to the number of records in the file.
+/run/printProgress 1000
+/run/beamOn 100000

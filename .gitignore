@@ -1,3 +1,5 @@
 *.root
-*.txt
+*.log
+*.gz
 build/*
+geometry_manifest.json

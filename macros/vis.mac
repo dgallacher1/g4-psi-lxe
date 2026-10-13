@@ -1,0 +1,31 @@
+# Interactive visualisation: ./xenonSim  (no macro argument)
+/run/initialize
+
+/vis/open OGL 900x700-0+0
+/vis/viewer/set/autoRefresh false
+/vis/verbose errors
+
+/vis/drawVolume
+/vis/viewer/set/viewpointThetaPhi 70 20
+/vis/viewer/set/style surface
+/vis/viewer/zoom 1.4
+
+# Cut through the port: show the y = 0 half-space (keep y<0 side) so the
+# window stack, sleeve and flanges are visible in section like the CAD view.
+# Comment out to see the closed vessel.
+/vis/viewer/set/sectionPlane on 0 0 0 mm 0 1 0
+
+/vis/scene/add/trajectories smooth
+/vis/modeling/trajectories/create/drawByParticleID
+/vis/modeling/trajectories/drawByParticleID-0/set e+    red
+/vis/modeling/trajectories/drawByParticleID-0/set e-    yellow
+/vis/modeling/trajectories/drawByParticleID-0/set gamma green
+/vis/modeling/trajectories/drawByParticleID-0/set alpha magenta
+/vis/scene/add/hits
+/vis/scene/endOfEventAction accumulate
+/vis/scene/add/axes 0 0 0 50 mm
+
+/vis/viewer/set/autoRefresh true
+
+# Load the beam so /run/beamOn works from the GUI. Then e.g.  /run/beamOn 20
+/control/execute macros/beam.mac

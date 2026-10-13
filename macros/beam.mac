@@ -1,5 +1,7 @@
-# Positron beam, G4Beamline-style, defined entirely at runtime via GPS.
-# Enters from -z (upstream of the cryostat) travelling +z into the LXe.
+# Positron beam, +x direction, defined entirely at runtime via GPS.
+# Frame: z = vessel axis (z=0 at beam-window centre), beam along +x.
+# The start plane MUST be upstream of all material and inside the world:
+# check the "beam/scan start plane suggestion" line printed at startup.
 
 /beam/mode gps
 
@@ -12,25 +14,32 @@
 #/gps/ene/type Gauss
 #/gps/ene/sigma 0.1 MeV
 
-# Transverse spot: 2D Gaussian in the x-y plane at the source point.
+# Transverse spot: 2D Gaussian in the plane normal to +x.
+# rot1/rot2 are the plane's local axes: sigma_x acts along rot1 (= world y),
+# sigma_y along rot2 (= world z, the vessel axis).
 /gps/pos/type Beam
-/gps/pos/centre 0. 0. -260. mm
+/gps/pos/shape Circle
+/gps/pos/rot1 0 1 0
+/gps/pos/rot2 0 0 1
+/gps/pos/centre -175. 0. 0. mm
 /gps/pos/sigma_x 2. mm
 /gps/pos/sigma_y 2. mm
 
-# Momentum direction (pencil beam along +z).
-/gps/direction 0 0 1
+# Pencil beam along +x.
+/gps/direction 1 0 0
 
-# --- Optional angular divergence -------------------------------------------
-# GPS 'beam2d' clusters directions about a reference axis; verify the axis
-# with rot1/rot2 before trusting absolute angles.
+# --- Optional angular divergence ----------------------------------------------
+# GPS 'beam2d' clusters directions about a reference axis that is easy to get
+# backwards. Check a few events in vis.mac before trusting the angles.
 #/gps/ang/type beam2d
+#/gps/ang/rot1 0 1 0
+#/gps/ang/rot2 0 0 1
 #/gps/ang/sigma_x 3. mrad
 #/gps/ang/sigma_y 3. mrad
 
-# --- To instead emit alphas from the imported source volume ----------------
+# --- To instead emit alphas from the imported source volume ------------------
 # /gps/particle alpha
-# /gps/ene/mono 5.486 MeV        # e.g. Am-241 principal line
+# /gps/ene/mono 5.486 MeV
 # /gps/pos/type Volume
-# /gps/pos/confine AlphaSource   # confine emission to the placed source PV
+# /gps/pos/confine AlphaSource
 # /gps/ang/type iso

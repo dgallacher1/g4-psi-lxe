@@ -23,12 +23,15 @@ include_directories(${PROJECT_SOURCE_DIR}/include)
 file(GLOB sources ${PROJECT_SOURCE_DIR}/src/*.cc)
 file(GLOB headers ${PROJECT_SOURCE_DIR}/include/*.hh)
 
+# geometry_probe.cc has its own main(): keep it out of the application.
+list(FILTER sources EXCLUDE REGEX "geometry_probe\\.cc$")
+
 add_executable(xenonSim xenonSim.cc ${sources} ${headers})
 target_link_libraries(xenonSim ${Geant4_LIBRARIES})
 
 # Geometry self-check: validates the header and probes the solids (no physics,
 # no data files needed).  Run it every time you change GeometryParameters.hh.
-add_executable(geometryProbe tests/geometry_probe.cc ${headers})
+add_executable(geometryProbe src/geometry_probe.cc ${headers})
 target_link_libraries(geometryProbe ${Geant4_LIBRARIES})
 
 # Stage runtime assets so ./xenonSim macros/run.mac works from the build dir.

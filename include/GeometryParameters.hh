@@ -206,8 +206,11 @@ inline constexpr G4double sourceZ = GEO_V(-80.*mm);
 // ----------------------------------------------------------------------------
 //  7. Environment and numerics
 // ----------------------------------------------------------------------------
-// Material on the beamline side of the Al window.  CONFIRM: vacuum or air?
-inline constexpr const char* worldMaterial = "G4_Galactic";
+// Material outside the Al window (and around the vessels): air (confirmed).
+// The air path between the beam-profile monitor and the window scatters the
+// beam, so the beam start plane (macros/beam.mac, /beam/offsetX) should sit at
+// the monitor's position, not at an arbitrary distance upstream.
+inline constexpr const char* worldMaterial = "G4_AIR";
 inline constexpr G4double worldMargin = 200.*mm;
 // Production cut inside the foils (must be << foil thickness; the energy
 // threshold is floored by Geant4 at ~1 keV regardless).

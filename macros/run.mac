@@ -1,0 +1,9 @@
+# Batch physics run:  ./xenonSim macros/run.mac
+/run/initialize
+/control/execute macros/beam.mac
+
+# For reproducibility, uncomment and set explicit seeds:
+#/random/setSeeds 12345 67890
+
+/run/printProgress 1000
+/run/beamOn 100000

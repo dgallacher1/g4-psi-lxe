@@ -62,14 +62,14 @@ Needs Geant4 built with `GEANT4_USE_GDML=ON` (alpha-source import). Macros live 
 
 Total energy deposited in xenon = `edep_keV + edepPlanes_keV` (the planes are separate LXe volumes).
 
-Fluence per primary, per plane (`analysis/fluence.py`):
+Fluence per primary, per plane (`scripts/fluence.py`):
 crossing estimator `sum_entering 1/|cos| / A`, and track-length `sum(stepLen) / (A t)`.
 
 ## Analysis
 ```bash
-python analysis/fluence.py      xenon_sim.root geometry_manifest.json
-python analysis/budget_map.py   xenon_sim.root geometry_manifest.json
-python analysis/quick_look.py   xenon_sim.root
+python scripts/fluence.py      xenon_sim.root geometry_manifest.json
+python scripts/budget_map.py   xenon_sim.root geometry_manifest.json
+python scripts/quick_look.py   xenon_sim.root
 ```
 
 ## Scope and known limits
