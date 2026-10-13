@@ -31,7 +31,11 @@ with uproot.open(root_file) as f:
 
 PDG = {-11: "e+", 11: "e-", 2212: "p", 1000020040: "alpha", 13: "mu-", -13: "mu+"}
 
-fig, axes = plt.subplots(len(geo["planes"]), 3, figsize=(13, 4 * len(geo["planes"])), squeeze=False)
+has_origin = "creator" in fl                              # files from before the origin columns lack it
+if has_origin:
+    fl["creator"] = np.asarray(fl["creator"], dtype=str)
+
+fig, axes = plt.subplots(len(geo["planes"]), 4, figsize=(17, 4 * len(geo["planes"])), squeeze=False)
 for row, pl in enumerate(geo["planes"]):
     A = pl["area"]                                        # mm^2 (disc or rectangle, from the manifest)
     t = pl["thickness"]
@@ -51,6 +55,16 @@ for row, pl in enumerate(geo["planes"]):
         print(f"        stat. rel. error ~ {stat:.2%};  mean E_in = {fl['kinE_keV'][ent].mean():.1f} keV")
         for code in np.unique(fl["pdg"][ent]):
             print(f"        {PDG.get(int(code), int(code)):>6}: {(fl['pdg'][ent] == code).sum()}")
+        # beam particle (parentID 0) vs shower products, and which process made the latter
+        def phi(sel):                                     # crossing fluence of a subset, /mm^2/primary
+            c = np.abs(fl["cosTheta"][sel]); return np.sum(1.0 / c[c > 1e-3]) / A / n_primaries
+        prim = ent & (fl["parentID"] == 0)
+        print(f"        primary {prim.sum():6d} crossings, fluence {phi(prim):.3e} | "
+              f"secondary {(ent & ~prim).sum():6d}, fluence {phi(ent & ~prim):.3e}")
+        if has_origin:
+            for name in np.unique(fl["creator"][ent & ~prim]):
+                sel = ent & ~prim & (fl["creator"] == name)
+                print(f"          made by {name:>10}: {sel.sum():6d} crossings, fluence {phi(sel):.3e}")
 
     ax = axes[row]
     ax[0].hist(fl["kinE_keV"][ent], bins=100)
@@ -60,6 +74,13 @@ for row, pl in enumerate(geo["planes"]):
     ax[1].set(xlabel="u [mm]", ylabel="v [mm]", title=f"{pl['name']} hit map", aspect="equal")
     ax[2].hist(cos, bins=50, range=(0, 1))
     ax[2].set(xlabel="|cos(theta)| to plane normal", ylabel="crossings", title=f"{pl['name']} angles")
+    if has_origin and ent.sum():                          # where were the crossing particles created?
+        sec = ent & (fl["parentID"] > 0)
+        ax[3].hist(fl["vtxX_mm"][sec], bins=80, log=True)
+        ax[3].set(xlabel="vertex x of secondaries [mm]  (beam along +x)", ylabel="crossings",
+                  title=f"{pl['name']} secondaries: creation point")
+    else:
+        ax[3].axis("off")
 
 fig.tight_layout()
 fig.savefig("fluence.png", dpi=130)

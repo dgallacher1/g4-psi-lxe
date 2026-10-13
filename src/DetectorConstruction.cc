@@ -100,8 +100,9 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 
   const G4Colour steel(0.6, 0.6, 0.65, 0.5);
   const G4Colour alu(0.85, 0.85, 0.9, 0.8);
-  const G4Colour tit(1.0, 0.8, 0.2, 1.0);
+  const G4Colour tit(1.0, 0.8, 0.5, 1.0);
   const G4Colour blue(0.2, 0.4, 0.9, 0.6);
+  const G4Colour gold(1.0, 0.84, 0.0, 1.0);
 
   // ---- World ----------------------------------------------------------------
   auto* worldLV = new G4LogicalVolume(
@@ -173,12 +174,17 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
     parser.SetOverlapCheck(false);
     parser.Read(fSourceGDML, /*validate=*/false);
     if (auto* sourceLV = parser.GetVolume(fSourceLVName)) {
+      sourceLV->SetVisAttributes(new G4VisAttributes(gold));
+    if (auto* activeLV = parser.GetVolume("ActiveLayerLV"))
+      activeLV->SetVisAttributes(new G4VisAttributes(gold));
+    if (auto* sourceLV = parser.GetVolume(fSourceLVName)) {
       new G4PVPlacement(nullptr, G4ThreeVector(Geo::sourceX, Geo::sourceY, Geo::sourceZ),
                         sourceLV, "AlphaSource", fXenonLV, false, 0, chk);
     } else {
       G4cerr << "[Detector] WARNING: LV '" << fSourceLVName << "' not in " << fSourceGDML
              << "; running without source." << G4endl;
     }
+  }
   } else {
     G4cerr << "[Detector] WARNING: " << fSourceGDML << " not found; running without source." << G4endl;
   }

@@ -101,9 +101,14 @@ inline Solids Build()
   S.innerBottom = WorldCyl("InnerBottom", 0., RI, I.cavityZmin - I.bottomT, I.cavityZmin);
   S.innerTop    = WorldCyl("InnerTop",    0., RI, I.cavityZmax, I.cavityZmax + I.topT);
   S.innerStub   = nullptr;
+  // The cavity-side face is cylindrical, concentric with the vessel, at radius
+  // flangeS0 (= its s on the port axis): the flange follows the vessel curvature.
+  auto* pocketRing = new G4SubtractionSolid(
+      "InnerFlange_pocket",
+      PortTube("InnerFlange_pocket_raw", innerPocketR, IP.flangeOR, StubStart(IP.flangeS0, IP.flangeOR), S.sTiIn),
+      WorldCyl("InnerFlange_face", 0., IP.flangeS0, -2. * IP.flangeOR, 2. * IP.flangeOR));
   S.innerFlange = new G4UnionSolid(
-      "InnerFlange", PortTube("InnerFlange_pocket", innerPocketR, IP.flangeOR, IP.flangeS0, S.sTiIn),
-                     PortTube("InnerFlange_bore",    IP.boreR,    IP.flangeOR, S.sTiIn,    IP.flangeS1));
+      "InnerFlange", pocketRing, PortTube("InnerFlange_bore", IP.boreR, IP.flangeOR, S.sTiIn, IP.flangeS1));
   S.tiWindow = PortTube("TiWindow", 0., IP.boreR, S.sTiIn, tiWindow.outerFaceS);
 
   // ---- liquid xenon: inner cavity + the wall opening and pocket, minus the flange ---

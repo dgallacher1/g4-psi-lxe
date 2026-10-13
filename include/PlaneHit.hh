@@ -34,6 +34,9 @@ class PlaneHit : public G4VHit
   G4double stepLen  = 0.;
   G4double edep     = 0.;
   G4double gtime    = 0.;
+  // Where the track came from (to tell beam particles from shower products):
+  G4double vx = 0., vy = 0., vz = 0.;   // vertex of the track [mm]
+  G4String creator;                     // creator process name; "primary" for the beam particle
 };
 
 using PlaneHitsCollection = G4THitsCollection<PlaneHit>;

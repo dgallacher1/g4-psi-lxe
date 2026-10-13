@@ -3,6 +3,7 @@
 #include "G4Step.hh"
 #include "G4StepPoint.hh"
 #include "G4Track.hh"
+#include "G4VProcess.hh"
 #include "G4HCofThisEvent.hh"
 #include "G4SDManager.hh"
 #include "G4ThreeVector.hh"
@@ -50,6 +51,10 @@ G4bool PlaneSD::ProcessHits(G4Step* step, G4TouchableHistory*)
   hit->stepLen  = step->GetStepLength();
   hit->edep     = step->GetTotalEnergyDeposit();
   hit->gtime    = pre->GetGlobalTime();
+  hit->vx       = track->GetVertexPosition().x();
+  hit->vy       = track->GetVertexPosition().y();
+  hit->vz       = track->GetVertexPosition().z();
+  hit->creator  = track->GetCreatorProcess() ? track->GetCreatorProcess()->GetProcessName() : "primary";
 
   fHC->insert(hit);
   return true;

@@ -76,6 +76,10 @@ void EventAction::EndOfEventAction(const G4Event* evt)
         man->FillNtupleDColumn(2, 10, h->stepLen / mm);
         man->FillNtupleDColumn(2, 11, h->edep / keV);
         man->FillNtupleDColumn(2, 12, h->gtime / ns);
+        man->FillNtupleDColumn(2, 13, h->vx / mm);
+        man->FillNtupleDColumn(2, 14, h->vy / mm);
+        man->FillNtupleDColumn(2, 15, h->vz / mm);
+        man->FillNtupleSColumn(2, 16, h->creator);
         man->AddNtupleRow(2);
         planeEdep += h->edep;
       }

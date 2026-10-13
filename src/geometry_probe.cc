@@ -139,9 +139,16 @@ int main(int argc, char** argv)
   check(in(S.lxe,  P(S.sTiIn - 1.*mm, innerPocketR - 0.1*mm)),        "LXe fills the flange pocket");
   check(out(S.lxe, P(S.sTiIn - 1.*mm, innerPocketR + 0.1*mm)),        "LXe stops at the pocket wall (flange metal)");
   check(out(S.lxe, P(S.sTiIn + 1.*mm, IP.boreR - 0.1*mm)),            "no LXe beyond the Ti foil");
-  check(in(S.lxe,  P(IP.flangeS0 - 0.5*mm, IP.flangeOR - 0.5*mm)),
-        "LXe fills the wall opening in front of the flange face");
-  check(out(S.lxe, P(IP.flangeS0 + 0.5*mm, fI)),                      "LXe excluded where the flange protrudes into the cavity");
+  {
+    // the flange's cavity-side face is a cylinder of radius flangeS0 about the vessel axis
+    const G4double sFace = std::sqrt(IP.flangeS0*IP.flangeS0 - fI*fI);       // face s at offset y = fI
+    const G4double sEdge = std::sqrt(IP.flangeS0*IP.flangeS0 - (IP.flangeOR - 0.5*mm)*(IP.flangeOR - 0.5*mm));
+    check(in(S.lxe,  P(sFace - 0.5*mm, fI)) && out(S.lxe, P(sFace + 0.5*mm, fI)),
+          "inner flange face is curved with the vessel (LXe stops at it, mid-annulus)");
+    check(in(S.lxe,  P(sEdge - 0.5*mm, IP.flangeOR - 0.5*mm)) && out(S.lxe, P(sEdge + 0.5*mm, IP.flangeOR - 0.5*mm)),
+          "inner flange reaches the cavity at the edge of the wall opening (no gap)");
+    check(in(S.innerFlange, P(sEdge + 0.5*mm, IP.flangeOR - 0.5*mm)), "inner flange fills the wall opening out to its edge");
+  }
   check(out(S.lxe, G4ThreeVector(+inner.cavityR + 0.5*mm, 0., 0.)),   "LXe does not leak through the +x wall");
   if (S.sleeve) {
     const G4double sm = 0.5 * (sleeve.s0 + sleeve.s1), rm = 0.5 * (sleeve.IR + sleeve.OR);

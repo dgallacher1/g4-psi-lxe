@@ -54,6 +54,10 @@ RunAction::RunAction()
   man->CreateNtupleDColumn("stepLen_mm");  // 10
   man->CreateNtupleDColumn("edep_keV");    // 11
   man->CreateNtupleDColumn("time_ns");     // 12
+  man->CreateNtupleDColumn("vtxX_mm");     // 13  track vertex (where the particle was created)
+  man->CreateNtupleDColumn("vtxY_mm");     // 14
+  man->CreateNtupleDColumn("vtxZ_mm");     // 15
+  man->CreateNtupleSColumn("creator");     // 16  creator process, "primary" for the beam particle
   man->FinishNtuple();
 
   // --- ntuple 3: geantino material budget, one row per (event, volume) ---

@@ -191,6 +191,7 @@ inline constexpr Sleeve sleeve = {
 //
 //       s (from the CAD)                                        value used
 //       flange inner face  -3.77 from wall ID (50)       ->      46.23
+//         (cylindrical, concentric with the vessel: s on the port axis = its radius)
 //       flange outer face  16.71 from wall OD (52)       ->      68.71
 //       Ti outer face       8.50 from wall OD (52)       ->      60.50
 //
@@ -344,6 +345,7 @@ inline std::vector<std::string> Validate()
   // Flange inner face must clear the vessel's outer cylinder over its whole disc.
   req(outerPort.flangeS0 >= outerR(), "outerPort.flangeS0 must be >= outer vessel outer radius");
   // (The inner flange may reach into the cavity: the LXe is built minus the flange.)
+  req(innerPort.flangeS0 > innerPort.flangeOR, "innerPort.flangeS0 (radius of the curved inner face) must exceed flangeOR");
   req(outerPort.stubOR < outerR(), "outer stub OD larger than the vessel it is welded to");
   // Inner flange must sit inside the outer cavity (curved wall, hence the sqrt).
   if (innerPort.flangeOR < outer.cavityR)
