@@ -5,6 +5,7 @@
 #include "XenonSD.hh"
 
 #include "G4Box.hh"
+#include "G4Tubs.hh"
 #include "G4LogicalVolume.hh"
 #include "G4PVPlacement.hh"
 #include "G4NistManager.hh"
@@ -127,7 +128,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
   make(S.innerWall,   matInner, "InnerWall",   jacketLV, steel);
   make(S.innerBottom, matInner, "InnerBottom", jacketLV, steel);
   make(S.innerTop,    matInner, "InnerTop",    jacketLV, steel);
-  make(S.innerStub,   matIPort, "InnerStub",   jacketLV, blue);
+  if (S.innerStub) make(S.innerStub, matIPort, "InnerStub", jacketLV, blue);   // none in the current CAD
   make(S.innerFlange, matIPort, "InnerFlange", jacketLV, blue);
   auto* tiLV = make(S.tiWindow, matTi, "TiWindow", jacketLV, tit);
 
@@ -147,11 +148,15 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
   alLV->SetRegion(winRegion); winRegion->AddRootLogicalVolume(alLV);
   tiLV->SetRegion(winRegion); winRegion->AddRootLogicalVolume(tiLV);
 
-  // ---- virtual SiPM fluence planes (LXe slabs inside the LXe) -----------------
+  // ---- fluence planes standing in for the SiPMs (silicon slabs inside the LXe) -
+  auto* matPlane = Mat(Geo::planeMaterial);
   fPlaneLVs.clear();
   for (G4int i = 0; i < Geo::nPlanes; ++i) {
     const auto& p = Geo::planes[i];
-    auto* lv = new G4LogicalVolume(new G4Box(p.name, p.halfU, p.halfV, 0.5 * p.thickness), matLXe, p.name);
+    G4VSolid* shape = p.circular
+        ? static_cast<G4VSolid*>(new G4Tubs(p.name, 0., p.halfU, 0.5 * p.thickness, 0., twopi))
+        : static_cast<G4VSolid*>(new G4Box(p.name, p.halfU, p.halfV, 0.5 * p.thickness));
+    auto* lv = new G4LogicalVolume(shape, matPlane, p.name);
     auto* va = new G4VisAttributes(G4Colour(1.0, 0.3, 0.3, 0.6));
     va->SetForceSolid(true);
     lv->SetVisAttributes(va);

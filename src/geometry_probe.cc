@@ -72,9 +72,8 @@ int main(int argc, char** argv)
   const G4double RO = outerR(), RI = innerR();
   const auto& OP = outerPort; const auto& IP = innerPort;
   const G4double yO = 0.5 * (OP.boreR + OP.stubOR);          // mid-annulus of the outer stub
-  const G4double yI = 0.5 * (IP.boreR + IP.stubOR);
   const G4double fO = 0.5 * (OP.boreR + OP.flangeOR);        // mid-annulus of the flange rings
-  const G4double fI = 0.5 * (IP.boreR + IP.flangeOR);
+  const G4double fI = 0.5 * (innerPocketR + IP.flangeOR);    // mid-annulus of the inner flange's pocket ring
   const G4double sFO = 0.5 * (OP.flangeS0 + OP.flangeS1);    // flange mid-plane
   const G4double sFI = 0.5 * (IP.flangeS0 + IP.flangeS1);
 
@@ -94,11 +93,12 @@ int main(int argc, char** argv)
     check(in(S.outerWall,  G4ThreeVector(+rw, 0., 0.)), "outer wall intact at +x (no bore on the far side)");
   }
   {
+    // The inner wall's opening is as wide as the flange that fills it.
     const G4double rw = inner.cavityR + 0.5 * inner.wallT;
-    const G4double yIn = IP.boreR - 0.1*mm, yOut = IP.boreR + 0.1*mm;
+    const G4double yIn = IP.flangeOR - 0.1*mm, yOut = IP.flangeOR + 0.1*mm;
     const auto wallPt = [&](G4double y) { return G4ThreeVector(-std::sqrt(rw*rw - y*y), y, 0.); };
-    check(out(S.innerWall, wallPt(yIn)),  "inner wall open inside the port bore (-x)");
-    check(in(S.innerWall,  wallPt(yOut)), "inner wall intact just outside the bore radius");
+    check(out(S.innerWall, wallPt(yIn)),  "inner wall open inside the flange opening (-x)");
+    check(in(S.innerWall,  wallPt(yOut)), "inner wall intact just outside the flange opening");
     check(in(S.innerWall,  G4ThreeVector(+rw, 0., 0.)), "inner wall intact at +x");
   }
 
@@ -111,11 +111,7 @@ int main(int argc, char** argv)
     check(out(S.outerStub, Pmirror(sEdge + 2.*mm, yO)), "outer stub not mirrored to +x");
     check(out(S.outerWall, P(sEdge + 2.*mm, yO)), "stub region is not also wall (no double material)");
   }
-  {
-    const G4double sEdge = std::sqrt(RI*RI - yI*yI);
-    check(out(S.innerStub, P(sEdge - 0.5*mm, yI)), "inner stub removed inside the inner vessel outer cylinder");
-    check(in(S.innerStub,  P(sEdge + 2.*mm, yI)), "inner stub present just outside the inner vessel");
-  }
+  check(S.innerStub == nullptr, "inner port has no stub (flange fills the wall opening)");
 
   std::cout << "\n[Foils]\n";
   {
@@ -140,7 +136,12 @@ int main(int argc, char** argv)
   check(in(S.lxe, G4ThreeVector(0., 0., 0.)),                          "LXe fills the inner cavity");
   check(in(S.lxe, P(0.5 * (inner.cavityR + S.sTiIn))),                "LXe reaches through the inner port bore");
   check(out(S.lxe, P(S.sTiIn + 0.5 * tiWindow.thickness)),            "LXe stops at the Ti foil");
-  check(out(S.lxe, P(0.5 * (inner.cavityR + S.sTiIn), IP.boreR + 0.1*mm)), "LXe confined to the bore radius");
+  check(in(S.lxe,  P(S.sTiIn - 1.*mm, innerPocketR - 0.1*mm)),        "LXe fills the flange pocket");
+  check(out(S.lxe, P(S.sTiIn - 1.*mm, innerPocketR + 0.1*mm)),        "LXe stops at the pocket wall (flange metal)");
+  check(out(S.lxe, P(S.sTiIn + 1.*mm, IP.boreR - 0.1*mm)),            "no LXe beyond the Ti foil");
+  check(in(S.lxe,  P(IP.flangeS0 - 0.5*mm, IP.flangeOR - 0.5*mm)),
+        "LXe fills the wall opening in front of the flange face");
+  check(out(S.lxe, P(IP.flangeS0 + 0.5*mm, fI)),                      "LXe excluded where the flange protrudes into the cavity");
   check(out(S.lxe, G4ThreeVector(+inner.cavityR + 0.5*mm, 0., 0.)),   "LXe does not leak through the +x wall");
   if (S.sleeve) {
     const G4double sm = 0.5 * (sleeve.s0 + sleeve.s1), rm = 0.5 * (sleeve.IR + sleeve.OR);
@@ -156,7 +157,9 @@ int main(int argc, char** argv)
     std::cout << "        " << p.name << ": normal (" << n.x() << ", " << n.y() << ", " << n.z() << ")  U ("
               << U.x() << ", " << U.y() << ", " << U.z() << ")  V (" << V.x() << ", " << V.y() << ", " << V.z() << ")\n";
     bool allIn = true;
-    for (int a : {-1, 1}) for (int b : {-1, 1}) for (int c : {-1, 1}) {
+    // Rectangle: the 8 corners.  Disc: the 4 rim points on U and V, on both faces.
+    for (int a : {-1, 0, 1}) for (int b : {-1, 0, 1}) for (int c : {-1, 1}) {
+      if (p.circular ? (a * b != 0 || (a == 0 && b == 0)) : (a == 0 || b == 0)) continue;
       const G4ThreeVector corner = R * G4ThreeVector(a * p.halfU, b * p.halfV, c * 0.5 * p.thickness)
                                  + G4ThreeVector(p.cx, p.cy, p.cz);
       if (S.lxe->Inside(corner) == kOutside) allIn = false;

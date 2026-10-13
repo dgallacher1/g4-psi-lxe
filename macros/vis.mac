@@ -1,31 +1,54 @@
-# Interactive visualisation: ./xenonSim  (no macro argument)
+# Geometry images with Geant4's built-in RayTracer.  No display needed: every
+# view is written as a JPEG in the working directory.
+#
+#   ./xenonSim macros/vis.mac        batch: write the images, then exit
+#   G4UI_USE_TCSH=1 ./xenonSim       same images, then a terminal session (no Qt/X needed)
+#
+# Files are named g4RayTracer.RayTracer_NNNN.jpeg, numbered in the order below
+# (0000 = overview, 0001 = beam's eye, 0002 = outer vessel hidden, 0003 = plan view).
+#
+# Notes on the RayTracer:
+#   * geometry only: it draws no trajectories (use the ROOT output for tracks);
+#   * it ignores section/cutaway planes, so internals are shown by hiding volumes;
+#   * every redraw is a full trace, so auto-refresh stays off and each view is
+#     drawn explicitly with /vis/viewer/flush.
 /run/initialize
 
-/vis/open OGL 900x700-0+0
+/vis/open RayTracer
 /vis/viewer/set/autoRefresh false
-/vis/verbose errors
+/vis/viewer/set/background white
+/vis/viewer/set/projection perspective 10 deg
+# Optional: image size in pixels.
+#/vis/rayTracer/column 1000
+#/vis/rayTracer/row 1000
 
+# --- 0000: overview, from the -x side where the beam port is -----------------
+/vis/viewer/set/upVector 0 0 1
+/vis/viewer/set/viewpointVector -1 -0.6 0.4
 /vis/drawVolume
-/vis/viewer/set/viewpointThetaPhi 70 20
-/vis/viewer/set/style surface
-/vis/viewer/zoom 1.4
 
-# Cut through the port: show the y = 0 half-space (keep y<0 side) so the
-# window stack, sleeve and flanges are visible in section like the CAD view.
-# Comment out to see the closed vessel.
-/vis/viewer/set/sectionPlane on 0 0 0 mm 0 1 0
+# --- 0001: beam's eye view, looking along +x at the window stack -------------
+/vis/viewer/set/viewpointVector -1 0 0
+/vis/viewer/flush
 
-/vis/scene/add/trajectories smooth
-/vis/modeling/trajectories/create/drawByParticleID
-/vis/modeling/trajectories/drawByParticleID-0/set e+    red
-/vis/modeling/trajectories/drawByParticleID-0/set e-    yellow
-/vis/modeling/trajectories/drawByParticleID-0/set gamma green
-/vis/modeling/trajectories/drawByParticleID-0/set alpha magenta
-/vis/scene/add/hits
-/vis/scene/endOfEventAction accumulate
-/vis/scene/add/axes 0 0 0 50 mm
+# --- 0002: outer vessel hidden: inner vessel, sleeve, flanges, Ti foil -------
+/vis/geometry/set/visibility OuterWall   0 false
+/vis/geometry/set/visibility OuterBottom 0 false
+/vis/geometry/set/visibility OuterTop    0 false
+/vis/geometry/set/visibility OuterStub   0 false
+/vis/geometry/set/visibility OuterFlange 0 false
+/vis/viewer/set/viewpointVector -1 -0.6 0.4
+/vis/viewer/flush
 
-/vis/viewer/set/autoRefresh true
+# --- 0003: plan view from +z with the top plates removed: planes, source, port
+/vis/geometry/set/visibility InnerTop 0 false
+/vis/viewer/set/upVector 0 1 0
+/vis/viewer/set/viewpointVector 0 0 1
+/vis/viewer/flush
 
-# Load the beam so /run/beamOn works from the GUI. Then e.g.  /run/beamOn 20
+# Optional: print the volume tree (names, materials, masses) as text.
+#/vis/ASCIITree/verbose 4
+#/vis/drawTree
+
+# Load the beam so /run/beamOn works in an interactive session.
 /control/execute macros/beam.mac

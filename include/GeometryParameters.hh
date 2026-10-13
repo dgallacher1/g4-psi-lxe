@@ -18,8 +18,11 @@
 //    axis, measured OUTWARD along the port axis (s = -x).  Larger s = more
 //    upstream.  Port parts are therefore listed in the order the beam meets
 //    them when you read s from large to small:
-//        outer CF flange  ->  Al window  ->  sleeve  ->  inner CF flange / Ti
-//        window  ->  LXe.
+//        outer CF flange / Al window  ->  insulating vacuum  ->  inner CF flange /
+//        Ti window  ->  LXe.
+//    CAD positions on the port are measured from the vessel wall; convert to s
+//    with s = (vessel outer radius) + (CAD value from the wall OD), or
+//    s = (vessel inner radius) + (CAD value from the wall ID).
 //
 //  HOW TO FILL THIS IN
 //    Every number has a GEO_V(<placeholder>) wrapper.  Overwrite the whole
@@ -36,6 +39,7 @@
 // ============================================================================
 
 #include "G4SystemOfUnits.hh"
+#include "G4PhysicalConstants.hh"
 #include "G4RotationMatrix.hh"
 #include "G4ThreeVector.hh"
 #include "globals.hh"
@@ -102,106 +106,140 @@ struct PlaneSpec {                    // thin virtual slab for charged-particle 
   //   normal +z : all zero     (U -> +x, V -> +y)
   //   normal +y : rotX = -90   (U -> +x, V -> -z)
   G4double rotXdeg, rotYdeg, rotZdeg;
-  G4double halfU, halfV;
-  G4double thickness;                 // keep thin (tens of um) so it does not perturb tracks
+  G4double halfU, halfV;              // circular plane: halfU = halfV = radius
+  G4double thickness;                 // silicon thickness (a plane is a real, interacting slab)
+  G4bool   circular;                  // true: disc of radius halfU (G4Tubs); false: rectangle (G4Box)
 };
+
+inline G4double PlaneArea(const PlaneSpec& p)
+{
+  return p.circular ? CLHEP::pi * p.halfU * p.halfU : 4. * p.halfU * p.halfV;
+}
 
 // ----------------------------------------------------------------------------
 //  1. Vessels   (CAD: cut-away section, vertical cylinders)
 // ----------------------------------------------------------------------------
+//  CAD values (Fusion).  Radii and z extents as measured.
 inline constexpr Vessel outer = {
-  /*cavityR   */ GEO_V(100.*mm),
-  /*cavityZmin*/ GEO_V(-230.*mm),
-  /*cavityZmax*/ GEO_V(300.*mm),
-  /*wallT     */ GEO_V(3.*mm),
-  /*bottomT   */ GEO_V(10.*mm),
-  /*topT      */ GEO_V(10.*mm),
+  /*cavityR   */ 82.5*mm,
+  /*cavityZmin*/ -187.*mm,
+  /*cavityZmax*/ 187.*mm,
+  /*wallT     */ 6.*mm,
+  /*bottomT   */ 4.*mm,
+  /*topT      */ 4.*mm,
   "G4_STAINLESS-STEEL"
 };
 
 inline constexpr Vessel inner = {
-  /*cavityR   */ GEO_V(45.*mm),
-  /*cavityZmin*/ GEO_V(-170.*mm),
-  /*cavityZmax*/ GEO_V(120.*mm),
-  /*wallT     */ GEO_V(2.*mm),
-  /*bottomT   */ GEO_V(6.*mm),
-  /*topT      */ GEO_V(6.*mm),
+  /*cavityR   */ 50.*mm,
+  /*cavityZmin*/ -141.2*mm,
+  /*cavityZmax*/ 141.2*mm,
+  /*wallT     */ 2.*mm,
+  /*bottomT   */ 4.*mm,
+  /*topT      */ 4.*mm,
   "G4_STAINLESS-STEEL"
 };
 
 // ----------------------------------------------------------------------------
-//  2. Beam port on the OUTER vessel  (standard DN40CF = 2.75" Conflat)
-//     stub is welded to the wall; flange is a simple additive ring.
-//     Placeholders below are NOMINAL DN40CF: flange OD 69.85 mm, tube OD
-//     38.1 mm (1.5"), ~1.5 mm wall (ID ~35 mm), flange ~15.75 mm thick.
-//     Replace with the CAD values.  Knife edge, gasket groove and bolt holes
-//     are not modelled (they are away from the beam axis).
+//  2. Beam port on the OUTER vessel  (DN40CF-style flange)
+//     stub is welded to the wall; the flange is a simple additive ring.
+//     CAD s values are measured from the outer vessel OD (88.5 mm):
+//       flange 50.5 / 74.6 -> s = 139.0 / 163.1,  Al window 62.63 -> s = 151.13
+//     The "flange" spans two half-flanges; the Al foil is clamped between them,
+//     so it sits in the middle of the ring.  Knife edge, gasket groove and bolt
+//     holes are not modelled (they are away from the beam axis).
 // ----------------------------------------------------------------------------
 inline constexpr Port outerPort = {
-  /*boreR   */ GEO_V(17.5*mm),
-  /*stubOR  */ GEO_V(19.05*mm),
-  /*flangeOR*/ GEO_V(34.925*mm),
-  /*flangeS0*/ GEO_V(110.*mm),
-  /*flangeS1*/ GEO_V(125.75*mm),
+  /*boreR   */ 19.2*mm,
+  /*stubOR  */ 21.2*mm,                 // CAD gives the tube OD = 42.4 mm
+  /*flangeOR*/ 35.0*mm,
+  /*flangeS0*/ 139.0*mm,
+  /*flangeS1*/ 163.1*mm,
   "G4_STAINLESS-STEEL"
 };
 
 // First (thin) window: aluminium, separates the jacket vacuum from the beamline side.
 inline constexpr Window alWindow = {
-  /*thickness */ GEO_V(0.1*mm),
-  /*outerFaceS*/ GEO_V(125.75*mm),
+  /*thickness */ 0.1*mm,
+  /*outerFaceS*/ 151.13*mm,
   "G4_Al"
 };
 
 // ----------------------------------------------------------------------------
-//  3. Sleeve between the two windows (the dark tube in the CAD image)
+//  3. Sleeve: not present in the CAD (the dark tube in the section view is the
+//     inside surface of the outer stub).  Kept as an option; leave use = false.
 // ----------------------------------------------------------------------------
 inline constexpr Sleeve sleeve = {
-  /*use*/ true,
-  /*IR */ GEO_V(15.*mm),
-  /*OR */ GEO_V(16.5*mm),
-  /*s0 */ GEO_V(70.*mm),
-  /*s1 */ GEO_V(120.*mm),
+  /*use*/ false,
+  /*IR */ 0.*mm,
+  /*OR */ 0.*mm,
+  /*s0 */ 0.*mm,
+  /*s1 */ 0.*mm,
   "G4_Al"
 };
 
 // ----------------------------------------------------------------------------
 //  4. Port on the INNER vessel: non-standard CF, concentric with the outer
-//     port, NOT attached to it (cryo insulation gap).  The Ti foil closes the
-//     bore; LXe fills the bore up to the foil.
+//     port, NOT attached to it (cryo insulation gap).
+//
+//     There is no separate stub.  The flange fills an opening in the wall (opening
+//     radius = flangeOR) and reaches 3.77 mm into the cavity.  From the cavity
+//     side it has a POCKET of radius innerPocketR that holds the SiPM board; the
+//     pocket floor is the Ti foil's inner face, and the foil is welded across the
+//     narrower boreR beyond it.  The LXe fills the wall opening and the pocket
+//     (it is built minus the flange metal), so the SiPM and the foil see LXe.
+//
+//       s (from the CAD)                                        value used
+//       flange inner face  -3.77 from wall ID (50)       ->      46.23
+//       flange outer face  16.71 from wall OD (52)       ->      68.71
+//       Ti outer face       8.50 from wall OD (52)       ->      60.50
+//
+//     stubOR is unused for this port (the CAD "stub OR 20 mm" is the pocket).
 // ----------------------------------------------------------------------------
 inline constexpr Port innerPort = {
-  /*boreR   */ GEO_V(17.5*mm),
-  /*stubOR  */ GEO_V(20.*mm),
-  /*flangeOR*/ GEO_V(34.925*mm),
-  /*flangeS0*/ GEO_V(50.*mm),
-  /*flangeS1*/ GEO_V(62.7*mm),
+  /*boreR   */ 12.5*mm,
+  /*stubOR  */ 0.*mm,                   // unused (see above)
+  /*flangeOR*/ 34.8*mm,
+  /*flangeS0*/ 46.23*mm,
+  /*flangeS1*/ 68.71*mm,
   "G4_STAINLESS-STEEL"
 };
+inline constexpr G4double innerPocketR = 20.*mm;   // cavity-side opening of the inner flange
 
 inline constexpr Window tiWindow = {
-  /*thickness */ GEO_V(50.*um),
-  /*outerFaceS*/ GEO_V(62.7*mm),
+  /*thickness */ 0.05*mm,               // 50 um
+  /*outerFaceS*/ 60.5*mm,
   "G4_Ti"
 };
 
 // ----------------------------------------------------------------------------
-//  5. Virtual SiPM fluence planes (LXe-filled slabs, children of the LXe)
+//  5. Fluence planes standing in for the SiPMs (silicon slabs, children of the LXe)
+//     They are real silicon, so they scatter, absorb and shadow like a SiPM would.
 // ----------------------------------------------------------------------------
+inline constexpr const char* planeMaterial = "G4_Si";
 inline constexpr G4int nPlanes = 2;
 
+//  CAD positions use Fusion's X, which points TOWARD the port; ours points away
+//  from it, so x_here = -X_cad (a 180 deg turn about z; all CAD y are 0).
 inline constexpr PlaneSpec planes[nPlanes] = {
-  // name    cx            cy           cz            rotX         rotY        rotZ        halfU          halfV         thick
-  {"SiPM1", GEO_V(-20.*mm), GEO_V(0.*mm), GEO_V(0.*mm),   GEO_V(0.), GEO_V(90.), GEO_V(0.), GEO_V(12.*mm), GEO_V(12.*mm), GEO_V(0.05*mm)},
-  {"SiPM2", GEO_V(-10.*mm), GEO_V(0.*mm), GEO_V(-25.*mm), GEO_V(0.), GEO_V(0.),  GEO_V(0.), GEO_V(20.*mm), GEO_V(20.*mm), GEO_V(0.05*mm)}
+  // name    cx             cy           cz             rotX         rotY         rotZ        halfU          halfV          thick (mm)       circular
+  // SiPM1: disc r = 18 mm in the flange pocket, 4 mm behind the Ti foil, normal toward the port (-x).
+  //        Thickness is NOT from the CAD: 0.05 mm silicon assumed, replace with the real die thickness.
+  {"SiPM1", -56.41*mm,     0.*mm,        0.*mm,         0.,          -90.,        0.,         18.*mm,        18.*mm,        0.05*mm,         true},
+  // SiPM2: rectangle 55 x 73 mm, normal +z.  Its far edge (the side away from the port) is 13.80 mm from the
+  //        inner wall ID (x = +50), so the far edge is at x = 36.2 and the centre at 36.2 - 27.5 = 8.7.
+  //        The real board is not rectangular: the length (y) is cut from 73 to 63 mm (halfV 31.5) so the
+  //        corners fit in the cylinder (r = 48.0 mm); the SiPMs are inside this area.
+  //        z = -32.63 is the CAD board plane; the SiPM silicon may sit higher, check.  Thickness assumed.
+  {"SiPM2", 8.7*mm,        0.*mm,       -32.63*mm,      0.,          0.,          0.,         27.5*mm,       31.5*mm,       0.05*mm,         false}
 };
 
 // ----------------------------------------------------------------------------
-//  6. Alpha source (GDML) placement inside the LXe
+//  6. Alpha source (GDML) placement inside the LXe   (CAD X = +30.31 -> x = -30.31)
 // ----------------------------------------------------------------------------
-inline constexpr G4double sourceX = GEO_V(0.*mm);
-inline constexpr G4double sourceY = GEO_V(0.*mm);
-inline constexpr G4double sourceZ = GEO_V(-80.*mm);
+inline constexpr G4double sourceX = -30.31*mm;
+inline constexpr G4double sourceY = 0.*mm;
+inline constexpr G4double sourceZ = 0.*mm;
 
 // ----------------------------------------------------------------------------
 //  7. Environment and numerics
@@ -290,12 +328,12 @@ inline std::vector<std::string> Validate()
         n + ": radii/thicknesses must be > 0");
     req(v->cavityZmax > v->cavityZmin, n + ": cavityZmax must exceed cavityZmin");
   }
-  for (const Port* p : {&outerPort, &innerPort}) {
-    const std::string n = (p == &outerPort) ? "outerPort" : "innerPort";
-    req(p->boreR > 0 && p->boreR < p->stubOR && p->stubOR < p->flangeOR,
-        n + ": need 0 < boreR < stubOR < flangeOR");
-    req(p->flangeS1 > p->flangeS0, n + ": flangeS1 must exceed flangeS0");
-  }
+  req(outerPort.boreR > 0 && outerPort.boreR < outerPort.stubOR && outerPort.stubOR < outerPort.flangeOR,
+      "outerPort: need 0 < boreR < stubOR < flangeOR");
+  req(innerPort.boreR > 0 && innerPort.boreR < innerPocketR && innerPocketR < innerPort.flangeOR,
+      "innerPort: need 0 < boreR < innerPocketR < flangeOR");
+  for (const Port* p : {&outerPort, &innerPort})
+    req(p->flangeS1 > p->flangeS0, (p == &outerPort ? "outerPort" : "innerPort") + std::string(": flangeS1 must exceed flangeS0"));
 
   // --- nesting ------------------------------------------------------------
   req(innerR() + 1.*mm <= outer.cavityR, "inner vessel (incl. wall) must fit inside the outer cavity with >= 1 mm clearance");
@@ -305,8 +343,8 @@ inline std::vector<std::string> Validate()
   // --- port geometry ------------------------------------------------------
   // Flange inner face must clear the vessel's outer cylinder over its whole disc.
   req(outerPort.flangeS0 >= outerR(), "outerPort.flangeS0 must be >= outer vessel outer radius");
-  req(innerPort.flangeS0 >= innerR(), "innerPort.flangeS0 must be >= inner vessel outer radius");
-  req(outerPort.stubOR < outerR() && innerPort.stubOR < innerR(), "stub OD larger than the vessel it is welded to");
+  // (The inner flange may reach into the cavity: the LXe is built minus the flange.)
+  req(outerPort.stubOR < outerR(), "outer stub OD larger than the vessel it is welded to");
   // Inner flange must sit inside the outer cavity (curved wall, hence the sqrt).
   if (innerPort.flangeOR < outer.cavityR)
     req(innerPort.flangeS1 + 1.*mm <= std::sqrt(outer.cavityR*outer.cavityR - innerPort.flangeOR*innerPort.flangeOR),
@@ -314,7 +352,7 @@ inline std::vector<std::string> Validate()
   else
     bad.push_back("innerPort.flangeOR >= outer.cavityR");
   // Port is at z = 0: its disc must lie within the straight part of each vessel.
-  req(-innerPort.stubOR > inner.cavityZmin && innerPort.stubOR < inner.cavityZmax, "inner stub spans past the inner vessel's z extent");
+  req(-innerPort.flangeOR > inner.cavityZmin && innerPort.flangeOR < inner.cavityZmax, "inner flange spans past the inner vessel's z extent");
   req(-outerPort.flangeOR > outer.cavityZmin && outerPort.flangeOR < outer.cavityZmax, "outer flange spans past the outer vessel's z extent");
   req(-innerPort.flangeOR > outer.cavityZmin && innerPort.flangeOR < outer.cavityZmax, "inner flange spans past the outer vessel's z extent");
 
@@ -340,6 +378,8 @@ inline std::vector<std::string> Validate()
     const auto& p = planes[i];
     req(p.halfU > 0 && p.halfV > 0 && p.thickness > 0,
         std::string("planes[") + std::to_string(i) + "]: halfU, halfV, thickness must be > 0");
+    req(!p.circular || p.halfU == p.halfV,
+        std::string("planes[") + std::to_string(i) + "]: a circular plane needs halfU == halfV (= radius)");
   }
   return bad;
 }
@@ -368,6 +408,7 @@ inline std::string ManifestJSON()
   vessel("inner", inner);
   port("outerPort", outerPort);
   port("innerPort", innerPort);
+  o << "  \"innerPocketR\": " << innerPocketR << ",\n";
   window("alWindow", alWindow);
   window("tiWindow", tiWindow);
   o << "  \"sleeve\": {\"use\": " << (sleeve.use ? "true" : "false") << ", \"IR\": " << sleeve.IR << ", \"OR\": " << sleeve.OR
@@ -380,7 +421,9 @@ inline std::string ManifestJSON()
     const G4ThreeVector n = PlaneRotation(p) * G4ThreeVector(0, 0, 1);
     o << "    {\"id\": " << i << ", \"name\": \"" << p.name << "\", \"centre\": [" << p.cx << ", " << p.cy << ", " << p.cz
       << "], \"normal\": [" << n.x() << ", " << n.y() << ", " << n.z() << "], \"halfU\": " << p.halfU
-      << ", \"halfV\": " << p.halfV << ", \"thickness\": " << p.thickness << "}" << (i + 1 < nPlanes ? "," : "") << "\n";
+      << ", \"halfV\": " << p.halfV << ", \"thickness\": " << p.thickness
+      << ", \"circular\": " << (p.circular ? "true" : "false") << ", \"area\": " << PlaneArea(p)
+      << "}" << (i + 1 < nPlanes ? "," : "") << "\n";
   }
   o << "  ]\n}\n";
   return o.str();

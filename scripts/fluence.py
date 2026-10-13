@@ -33,7 +33,7 @@ PDG = {-11: "e+", 11: "e-", 2212: "p", 1000020040: "alpha", 13: "mu-", -13: "mu+
 
 fig, axes = plt.subplots(len(geo["planes"]), 3, figsize=(13, 4 * len(geo["planes"])), squeeze=False)
 for row, pl in enumerate(geo["planes"]):
-    A = 4.0 * pl["halfU"] * pl["halfV"]                  # mm^2
+    A = pl["area"]                                        # mm^2 (disc or rectangle, from the manifest)
     t = pl["thickness"]
     m = fl["planeID"] == pl["id"]
     ent = m & (fl["entering"] == 1)

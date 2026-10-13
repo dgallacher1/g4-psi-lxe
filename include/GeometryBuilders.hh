@@ -91,22 +91,26 @@ inline Solids Build()
   S.sleeve = sleeve.use ? PortTube("Sleeve", sleeve.IR, sleeve.OR, sleeve.s0, sleeve.s1) : nullptr;
 
   // ---- inner vessel ---------------------------------------------------------
+  // The inner flange fills an opening in the wall (radius flangeOR), so there is no
+  // stub.  Pocket (r < innerPocketR) on the cavity side, down to the Ti foil's inner
+  // face; the narrower bore (r < boreR) carries on outwards, closed by the foil.
+  S.sTiIn = tiWindow.outerFaceS - tiWindow.thickness;
   S.innerWall = new G4SubtractionSolid(
       "InnerWall", WorldCyl("InnerWall_cyl", I.cavityR, RI, I.cavityZmin, I.cavityZmax),
-      PortTube("InnerWall_hole", 0., IP.boreR, 0., IP.flangeS0));
+      PortTube("InnerWall_hole", 0., IP.flangeOR, 0., RI + 1. * mm));
   S.innerBottom = WorldCyl("InnerBottom", 0., RI, I.cavityZmin - I.bottomT, I.cavityZmin);
   S.innerTop    = WorldCyl("InnerTop",    0., RI, I.cavityZmax, I.cavityZmax + I.topT);
-  S.innerStub = new G4SubtractionSolid(
-      "InnerStub", PortTube("InnerStub_raw", IP.boreR, IP.stubOR, StubStart(RI, IP.stubOR), IP.flangeS0),
-      WorldCyl("InnerStub_cut", 0., RI, -2. * IP.stubOR, 2. * IP.stubOR));
-  S.innerFlange = PortTube("InnerFlange", IP.boreR, IP.flangeOR, IP.flangeS0, IP.flangeS1);
-  S.sTiIn = tiWindow.outerFaceS - tiWindow.thickness;
+  S.innerStub   = nullptr;
+  S.innerFlange = new G4UnionSolid(
+      "InnerFlange", PortTube("InnerFlange_pocket", innerPocketR, IP.flangeOR, IP.flangeS0, S.sTiIn),
+                     PortTube("InnerFlange_bore",    IP.boreR,    IP.flangeOR, S.sTiIn,    IP.flangeS1));
   S.tiWindow = PortTube("TiWindow", 0., IP.boreR, S.sTiIn, tiWindow.outerFaceS);
 
-  // ---- liquid xenon: inner cavity + inner port bore up to the Ti foil -------
-  S.lxe = new G4UnionSolid(
-      "LXe", WorldCyl("LXe_cyl", 0., I.cavityR, I.cavityZmin, I.cavityZmax),
-      PortTube("LXe_bore", 0., IP.boreR, 0., S.sTiIn));
+  // ---- liquid xenon: inner cavity + the wall opening and pocket, minus the flange ---
+  S.lxe = new G4SubtractionSolid(
+      "LXe", new G4UnionSolid("LXe_raw", WorldCyl("LXe_cyl", 0., I.cavityR, I.cavityZmin, I.cavityZmax),
+                                         PortTube("LXe_port", 0., IP.flangeOR, 0., S.sTiIn)),
+      S.innerFlange);
   return S;
 }
 

@@ -83,8 +83,8 @@ void EventAction::EndOfEventAction(const G4Event* evt)
   }
 
   // ---- ntuple 1: per-event summary -------------------------------------------
-  // edep_keV covers the bulk LXe only; the planes are separate LXe volumes, so
-  // add edepPlanes_keV for the total energy deposited in xenon.
+  // edep_keV is the energy deposited in the xenon; edepPlanes_keV is the energy
+  // deposited in the silicon planes (kept separate: it is not xenon signal).
   man->FillNtupleIColumn(1, 0, eid);
   man->FillNtupleDColumn(1, 1, totalEdep / keV);
   man->FillNtupleIColumn(1, 2, nSteps);

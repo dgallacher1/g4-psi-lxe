@@ -20,7 +20,7 @@ class G4LogicalVolume;
 //      |- InnerWall / InnerBottom / InnerTop
 //      |- InnerStub, InnerFlange, TiWindow
 //      `- LXe                                  (cavity + bore up to the Ti window)  <- XenonSD
-//         |- SiPM1, SiPM2                      (thin LXe slabs)                     <- PlaneSD
+//         |- SiPM1, SiPM2                      (thin silicon slabs)                 <- PlaneSD
 //         `- AlphaSource                       (GDML import)
 //
 // Every solid is built directly in WORLD coordinates (G4DisplacedSolid), so every
