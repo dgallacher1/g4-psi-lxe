@@ -1,0 +1,27 @@
+# Geantino material-budget scan:  ./xenonSim macros/budget_scan.mac
+# Throws massless, non-interacting geantinos along +x, uniformly over a (y,z)
+# window, and accumulates path length, X/X0, L/lambda and mass thickness per
+# volume up to the first entry into the LXe (/scan/stopAtLXe).
+# Compare the per-volume numbers against a hand calculation from the CAD.
+/run/initialize
+
+/scan/stopAtLXe true
+
+/gps/particle geantino
+/gps/number 1
+/gps/ene/type Mono
+/gps/ene/mono 1 MeV
+
+# Start plane normal to +x, upstream of all material (see startup suggestion).
+# rot1 = world y, rot2 = world z, so halfx spans y and halfy spans z.
+/gps/pos/type Plane
+/gps/pos/shape Square
+/gps/pos/rot1 0 1 0
+/gps/pos/rot2 0 0 1
+/gps/pos/centre -175. 0. 0. mm
+/gps/pos/halfx 40. mm
+/gps/pos/halfy 40. mm
+/gps/direction 1 0 0
+
+/run/printProgress 20000
+/run/beamOn 200000

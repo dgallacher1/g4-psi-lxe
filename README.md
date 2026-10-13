@@ -1,61 +1,79 @@
-# Xenon cryostat — basic Geant4 simulation
+# Xenon cryostat: Geant4 simulation
 
-A minimal but complete Geant4 (>= 11) application: a concentric cylindrical
-cryostat holding liquid xenon, a GDML/CAD-imported alpha source submerged in
-the LXe, a runtime-configurable positron beam, and step-level scoring in the
-xenon. No optical physics.
+Geant4 (>= 11) application: coaxial steel vessels with an insulating-vacuum jacket,
+a DN40CF beam port with an Al window, a free-standing sleeve and a non-standard CF on
+the inner vessel closed by a 50 um Ti foil into liquid xenon. Scoring in the LXe, plus
+two thin virtual planes that record charged-particle fluence where the SiPM boards sit.
+No optical physics.
 
-Author - David  G& Claude code
+## Frame (matches the GPU light simulations)
+- **+z**: vessel axis. **z = 0 = centre of the beam window.**
+- **+x**: beam direction. The port is on the -x side; the beam enters from -x.
+- x = y = 0 on the vessel axis; y completes the right-handed frame.
+- Port parts are located by **s** = distance from the vessel axis along the port (s = -x).
 
-## Requirements
-- Geant4 >= 11.0, built with `GEANT4_USE_GDML=ON` (Xerces-C).
-- Multithread build recommended (analysis ntuple merging is enabled).
-- Vis (OpenGL/Qt) only for the interactive viewer.
+## Geometry: edit `include/GeometryParameters.hh` only
+Every number is wrapped as `GEO_V(placeholder)`. Replace the whole wrapper with the CAD value.
+
+| Build option | Unreplaced `GEO_V` entries |
+|---|---|
+| `-DGEO_DEMO=ON` (default) | placeholders are used; loud DEMO banner; output is `xenon_sim_DEMO.root` |
+| `-DGEO_DEMO=OFF` | become NaN; the app **refuses to build** and lists exactly what is missing |
+
+Each run also writes `geometry_manifest.json` (all dimensions, plane centres/normals/areas,
+`isDemo`); the analysis scripts read it, so plane areas can never drift from the C++.
+
+Construction (all solids built in world coordinates, `include/GeometryBuilders.hh`):
+- vessel wall = tube minus the port bore; stub = horizontal tube whose root is cut by the
+  vertical vessel's outer cylinder; CF flanges are additive rings;
+- insulating vacuum and LXe are unions (cavity + port bore) so they reach their foils exactly;
+- the Ti foil sits in the inner bore; the sleeve is deliberately unattached.
+
+**After every edit of the header, run `./geometryProbe`.** It validates consistency (flange
+clearance, nesting, foils inside their bores) and probes the real solids (port on -x only, bores
+cut, stub roots cut, on-axis foil thickness, LXe/vacuum extents, planes inside the LXe).
 
 ## Build & run
 ```bash
 mkdir build && cd build
-cmake -DCMAKE_PREFIX_PATH=/home/dgallacher/packages/geant4/g4-install/v11.4.2 ..
+cmake -DCMAKE_PREFIX_PATH=/path/to/geant4-install [-DGEO_DEMO=OFF] ..
 make -j
-./xenonSim              # interactive viewer (macros/vis.mac)
-./xenonSim run.mac      # batch, writes xenon_sim.root
+./geometryProbe                    # geometry self-check
+./xenonSim                         # interactive (macros/vis.mac, y=0 section view)
+./xenonSim macros/budget_scan.mac  # geantino material budget
+./xenonSim macros/run.mac          # GPS positron beam
+./xenonSim macros/beam_file.mac    # G4Beamline phase-space file
 ```
-Assets (`macros/`, `gdml/`) are staged into the build dir by CMake, so relative
-paths work from there.
-
-## Geometry
-`world(vac) > outerVessel(steel) > vacuumJacket(vac) > innerVessel(steel) > LXe`.
-Nested *solid* `G4Tubs` — each daughter carves its parent, so the steel vessels
-are closed (walls + end caps) without boolean solids. Edit dimensions at the top
-of `DetectorConstruction::Construct()`.
-
-The alpha source is read from `gdml/alpha_source.gdml`; the code extracts the LV
-named `AlphaSourceLV` and places it at the LXe centre. Swap in your CAD export
-(STEP -> GDML mesh); keep the top LV name or change `fSourceLVName`.
+Needs Geant4 built with `GEANT4_USE_GDML=ON` (alpha-source import). Macros live under `macros/`.
 
 ## Beam
-- `mode gps` (default): positron beam via GPS, fully defined in `macros/beam.mac`
-  (spot, direction, spectrum, optional divergence). No recompilation to change it.
-- `mode file`: read a real G4Beamline phase-space dump (BLTrackFile:
-  `x y z Px Py Pz t PDGid EventID TrackID ParentID Weight`, mm/MeV/ns), one
-  primary per event:
-  ```
-  /beam/mode file
-  /beam/file  positrons_at_cryostat.txt
-  /run/beamOn 0     # runs until the file is exhausted
-  ```
+- `/beam/mode gps`: GPS beam, defined in `macros/beam.mac` (rot1/rot2 put the beam plane normal to +x).
+- `/beam/mode file`: G4Beamline BLTrackFile (`x y z Px Py Pz t PDGid EventID TrackID ParentID Weight`).
+  Mapped `sim = (bl.z, bl.x, bl.y) + /beam/offset{X,Y,Z}`. One **shared, mutex-protected** reader,
+  so MT workers consume disjoint records; the file is rewound each run. Use `/run/beamOn <n records>`.
 
-## Scoring / output
-`XenonSD` on the LXe LV records every step in the xenon as a hit (pre/post point,
-edep, PDG, track/parent ID, KE, step length, time). `EventAction` streams these to
-two ntuples in `xenon_sim.root`:
-- `steps`  — one row per step (full track polylines + deposits)
-- `events` — one row per event (total edep, step multiplicity)
+## Outputs (`xenon_sim.root`)
+| ntuple | content |
+|---|---|
+| `steps` | every step in the bulk LXe (full polylines, edep, PDG, IDs) |
+| `events` | per-event `edep_keV` (bulk LXe), `nSteps`, `edepPlanes_keV` |
+| `fluence` | every charged-particle step in the planes: plane id, local (u, v), entry KE, cos(theta) to normal, step length, `entering` flag |
+| `budget` | geantino scan: per (event, volume) length, X/X0, L/lambda, mass thickness, start (y0, z0) |
 
-Switch to CSV/HDF5 with `SetDefaultFileType` in `RunAction`. Analyse with
-`analysis/quick_look.py` (uproot).
+Total energy deposited in xenon = `edep_keV + edepPlanes_keV` (the planes are separate LXe volumes).
 
-## Deliberate scope limits
-- No `G4OpticalPhysics`: scintillation/SiPM response is out of scope; add it plus a
-  photon-sensitive SD if you later want light readout.
-- No hadronic list: fine for MeV-scale e+/alpha.
+Fluence per primary, per plane (`analysis/fluence.py`):
+crossing estimator `sum_entering 1/|cos| / A`, and track-length `sum(stepLen) / (A t)`.
+
+## Analysis
+```bash
+python analysis/fluence.py      xenon_sim.root geometry_manifest.json
+python analysis/budget_map.py   xenon_sim.root geometry_manifest.json
+python analysis/quick_look.py   xenon_sim.root
+```
+
+## Scope and known limits
+- Foil regions use a 2 um production cut (`WindowRegion`). EM option4 handles msc in thin foils;
+  validate energy loss through the Ti against expectation for your beam energy.
+- No bolt holes, knife edges, gaskets, MLI or cabling; no gas phase above the liquid level.
+- No optical physics, no hadronic list (MeV-scale e+/alpha).
