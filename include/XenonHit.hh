@@ -25,9 +25,11 @@ class XenonHit : public G4VHit
   G4double niel     = 0.;   // non-ionising part of edep (MeV): nuclear stopping / recoils
   G4double kinE     = 0.;   // pre-step kinetic energy (MeV)
   G4double stepLen  = 0.;   // mm
-  G4double gtime    = 0.;   // ns
+  G4double gtime    = 0.;   // ns, pre-step
+  G4double postTime = 0.;   // ns, post-step global time
   G4ThreeVector prePos;     // mm
   G4ThreeVector postPos;    // mm
+  G4ThreeVector preMom;     // pre-step momentum (MeV/c)
 };
 
 using XenonHitsCollection = G4THitsCollection<XenonHit>;

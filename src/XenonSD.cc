@@ -43,6 +43,8 @@ G4bool XenonSD::ProcessHits(G4Step* step, G4TouchableHistory*)
   hit->kinE     = pre->GetKineticEnergy();
   hit->stepLen  = step->GetStepLength();
   hit->gtime    = pre->GetGlobalTime();
+  hit->postTime = step->GetPostStepPoint()->GetGlobalTime();
+  hit->preMom   = pre->GetMomentum();
   hit->prePos   = pre->GetPosition();
   hit->postPos  = step->GetPostStepPoint()->GetPosition();
 

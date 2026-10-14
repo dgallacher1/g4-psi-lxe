@@ -12,7 +12,7 @@ class G4Event;
 // summary and (for geantino scans) the per-volume material budget.
 //
 // Ntuples (ids fixed in RunAction):
-//   0 steps    1 events    2 fluence    3 budget
+//   0 steps    1 events    2 fluence    3 budget    4 tree_chroma (one row per energy-depositing LXe step; GPU-simulation input)
 class EventAction : public G4UserEventAction
 {
  public:

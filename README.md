@@ -37,7 +37,7 @@ cut, stub roots cut, on-axis foil thickness, LXe/vacuum extents, planes inside t
 ## Build & run
 ```bash
 mkdir build && cd build
-cmake -DCMAKE_PREFIX_PATH=/path/to/geant4-install [-DGEO_DEMO=OFF] ..
+cmake -DCMAKE_PREFIX_PATH=/home/dgallacher/packages/geant4/g4-install/v11.4.2 [-DGEO_DEMO=OFF] ..
 make -j
 ./geometryProbe                    # geometry self-check
 ./xenonSim macros/vis.mac          # geometry images (RayTracer, no display needed)
@@ -66,6 +66,7 @@ commented `/vis/rayTracer/column|row` lines in the macro.
 | ntuple | content |
 |---|---|
 | `steps` | every step in the bulk LXe (full polylines, edep, `niel_keV` = non-ionising part of edep, PDG, IDs). `/lxe/onlyEdep true` keeps only edep > 0 rows (smaller; not for trajectory plots) |
+| `tree_chroma` | input of the GPU optical-photon simulation, same layout as the other simulation's: one row per energy-depositing LXe step, 14 double columns `event hits xpos ypos zpos time edep energy x_momentum y_momentum z_momentum particle_name PDG trackID` (mm, ns, keV; `hits` = row index within the event; `particle_name` = 1 gamma, 2 neutron, 3 e-, 4 e+, 5 other; positions and time post-step, `energy`/momentum pre-step). `/output/chroma false` and `/output/steps false` switch the trees off |
 | `events` | per-event `edep_keV` (xenon), `nSteps`, `edepPlanes_keV` (silicon planes) |
 | `fluence` | every charged-particle step in the planes: plane id, local (u, v), entry KE, cos(theta) to normal, step length, `entering` flag |
 | `budget` | geantino scan: per (event, volume) length, X/X0, L/lambda, mass thickness, start (y0, z0) |
@@ -93,3 +94,8 @@ python scripts/quick_look.py   xenon_sim.root
 - No sleeve in the CAD (`sleeve.use = false`).
 - Circular fluence planes (`circular = true`) are discs; the manifest carries each plane's `area`.
 - No optical physics, no hadronic list (MeV-scale e+/alpha).
+
+## GPU-simulation input (`tree_chroma`)
+
+`xenon_sim.root` can be fed to `ReadROOTFile(...)` as is. Rows of a multi-threaded run are not in event order
+and an event's rows are not guaranteed to be contiguous, so group or sort by `event` (then `hits`).

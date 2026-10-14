@@ -1,6 +1,7 @@
 #include "RunAction.hh"
 #include "GeometryParameters.hh"
 #include "PrimaryGeneratorAction.hh"
+#include "OutputOptions.hh"
 
 #include "G4AnalysisManager.hh"
 #include "G4Run.hh"
@@ -17,6 +18,11 @@ RunAction::RunAction()
     fMessenger = new G4GenericMessenger(this, "/output/", "Output file control");
     fMessenger->DeclareProperty("tag", sTag,
         "Suffix for the next run's ROOT file: xenon_sim_<tag>.root (no dots)")
+        .SetToBeBroadcasted(false);
+    fMessenger->DeclareProperty("chroma", gWriteChroma,
+        "false: do not fill tree_chroma (GPU-simulation input)").SetToBeBroadcasted(false);
+    fMessenger->DeclareProperty("steps", gWriteSteps,
+        "false: do not fill the steps ntuple (smaller files when only tree_chroma is needed)")
         .SetToBeBroadcasted(false);
   }
 
@@ -83,6 +89,18 @@ RunAction::RunAction()
   man->CreateNtupleDColumn("X0");             // 5  path length / radiation length
   man->CreateNtupleDColumn("lambdaI");        // 6  path length / nuclear interaction length
   man->CreateNtupleDColumn("massThick_gcm2"); // 7
+  man->FinishNtuple();
+
+  // --- ntuple 4: tree_chroma, the input of the GPU optical-photon simulation ----------------
+  // Same layout as the tree_chroma of the other Geant4 simulation that feeds it: one ROW PER
+  // ENERGY-DEPOSITING LXe STEP, every column a double. Rows of one event share "event"; "hits" is
+  // the index of the row within the event. Units: mm, ns, keV (edep, energy, momentum).
+  //   particle_name is the numeric class used there: 1 gamma, 2 neutron, 3 e-, 4 e+, 5 other
+  //   (the real identity is in PDG).
+  man->CreateNtuple("tree_chroma", "Scintillation each hit info");
+  for (const char* c : {"event", "hits", "xpos", "ypos", "zpos", "time", "edep", "energy",
+                        "x_momentum", "y_momentum", "z_momentum", "particle_name", "PDG", "trackID"})
+    man->CreateNtupleDColumn(c);                                 // columns 0..13 in this order
   man->FinishNtuple();
 }
 
