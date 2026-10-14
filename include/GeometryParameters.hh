@@ -208,7 +208,7 @@ inline constexpr Port innerPort = {
 inline constexpr G4double innerPocketR = 20.*mm;   // cavity-side opening of the inner flange
 
 inline constexpr Window tiWindow = {
-  /*thickness */ 0.05*mm,               // 50 um
+  /*thickness */ 0.5*mm,               // 500 um
   /*outerFaceS*/ 60.5*mm,
   "G4_Ti"
 };

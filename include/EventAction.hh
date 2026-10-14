@@ -11,13 +11,9 @@
 
 class G4Event;
 
-// End of event: streams the LXe step hits, the fluence-plane hits, the per-event
-// summary and (for geantino scans) the per-volume material budget.
-//
-// Ntuples (ids fixed in RunAction):
-//   0 steps    1 events    2 fluence    3 budget    4 tree_chroma (one row per energy-depositing LXe step; GPU-simulation input)
-//   5 tree_fuse (same rows + gamma interactions, lineage columns for Clustering.py)
-//   6 primary_path (every step of the beam particle in every volume: the true path into the vessel)
+// End of event: writes the event's outputs. The ntuples and columns are defined in OutputSchema.hh;
+// each output has its own Fill... function below, gated by its /output/ switch.
+class G4HCofThisEvent;
 class EventAction : public G4UserEventAction
 {
  public:
@@ -35,6 +31,15 @@ class EventAction : public G4UserEventAction
   void AddBudget(const G4String& volume, G4double len, G4double x0, G4double lambda, G4double massThick);
 
  private:
+  struct Totals { G4double lxeEdep = 0., planeEdep = 0.; G4int nSteps = 0; };
+
+  // hit collections of the event -> steps, tree_chroma, tree_fuse (one pass over the LXe hits)
+  void FillLXeHits(G4HCofThisEvent*, G4int eid, const G4ThreeVector& primaryVertex, Totals&);
+  void FillPlaneHits(G4HCofThisEvent*, G4int eid, Totals&);
+  void FillPrimaryPath(G4int eid) const;                 // primary_path
+  void FillEventSummary(G4int eid, const Totals&) const; // events
+  void FillBudget(G4int eid) const;                      // budget (geantino scans)
+
   struct PathPt { G4double x, y, z, kinE, t; std::string vol; };
   std::vector<PathPt> fPath;
   struct Budget { G4double len = 0., x0 = 0., lambda = 0., massThick = 0.; };

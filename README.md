@@ -68,10 +68,18 @@ commented `/vis/rayTracer/column|row` lines in the macro.
   so MT workers consume disjoint records; the file is rewound each run. Use `/run/beamOn <n records>`.
 
 ## Outputs (`xenon_sim.root`)
+**`include/OutputSchema.hh` is the one place that defines every ntuple and column** (name, type, description).
+`RunAction` creates the ntuples from it and `EventAction` fills them by column name (`row.set(Out::Fuse::ed, ...)`),
+so there are no numeric column indices in the code. To add a column: one `X(...)` line at the end of the ntuple's list
+there, then one `row.set(...)` in the matching `Fill...Row` function of `EventAction.cc`.
+Switches (master commands, between runs): `/output/steps`, `/output/chroma`, `/output/fuse`, `/output/path`, `/lxe/onlyEdep`.
+
 | ntuple | content |
 |---|---|
 | `steps` | every step in the bulk LXe (full polylines, edep, `niel_keV` = non-ionising part of edep, PDG, IDs). `/lxe/onlyEdep true` keeps only edep > 0 rows (smaller; not for trajectory plots) |
 | `tree_chroma` | input of the GPU optical-photon simulation, same layout as the other simulation's: one row per energy-depositing LXe step, 14 double columns `event hits xpos ypos zpos time edep energy x_momentum y_momentum z_momentum particle_name PDG trackID` (mm, ns, keV; `hits` = row index within the event; `particle_name` = 1 gamma, 2 neutron, 3 e-, 4 e+, 5 other; positions and time post-step, `energy`/momentum pre-step). `/output/chroma false` and `/output/steps false` switch the trees off |
+| `tree_fuse` | lineage table for `Clustering.py`, see below |
+| `primary_path` | the beam particle's steps in every volume, see below |
 | `events` | per-event `edep_keV` (xenon), `nSteps`, `edepPlanes_keV` (silicon planes) |
 | `fluence` | every charged-particle step in the planes: plane id, local (u, v), entry KE, cos(theta) to normal, step length, `entering` flag |
 | `budget` | geantino scan: per (event, volume) length, X/X0, L/lambda, mass thickness, start (y0, z0) |

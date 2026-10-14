@@ -7,10 +7,8 @@
 class G4Run;
 class G4GenericMessenger;
 
-// Owns the g4tools/G4AnalysisManager ntuple schema and file lifecycle.
-// Two ntuples:
-//   0 "steps"  : one row per step in the LXe (path points + edep)
-//   1 "events" : one row per event (total edep, step multiplicity)
+// Creates the ntuples (defined in OutputSchema.hh) and owns the output file lifecycle and the
+// /output/ commands (file tag and the switches of the optional ntuples).
 class RunAction : public G4UserRunAction
 {
  public:
