@@ -1,0 +1,17 @@
+# LXe response run for histograms and the GPU optical simulation:   ./xenonSim macros/lxe_response.mac
+# -> xenon_sim_lxe.root.  Then:  python scripts/lxe_look.py xenon_sim_lxe.root
+# tree_chroma only (plus events, fluence, primary_path): steps and fuse are the big ones and are not needed here.
+# Size: the smoke run gave ~1440 chroma rows/event, so 20000 events is ~29 M rows (a few GB uncompressed).
+# Scale N up once the file size on your disk is known.
+/run/initialize
+/control/execute macros/beam.mac
+
+/output/tag lxe
+/output/chroma true
+/output/fuse false
+/output/steps false
+/output/path true
+/lxe/onlyEdep true
+/random/setSeeds 20261014 1
+/run/printProgress 1000
+/run/beamOn 20000

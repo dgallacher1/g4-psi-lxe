@@ -108,8 +108,8 @@ void Collect(const G4Run* run, const std::string& stem)
   if (auto* mt = dynamic_cast<G4MTRunManager*>(rm)) nThreads = mt->GetNumberOfThreads();
   add("threads", std::to_string(nThreads));
   add("rng_engine", G4Random::getTheEngine()->name());
-  if (const long* s = CLHEP::HepRandom::getTheSeeds())
-    add("master_seeds", std::to_string(s[0]) + " " + std::to_string(s[1]));
+  // The seeds are taken from the command history below (last /random/setSeeds or /random/setSeed):
+  // MixMaxRng::getSeeds() does not return the seeds that were set, so reading the engine is meaningless.
   add("write_steps", yn(gWriteSteps));
   add("write_chroma", yn(gWriteChroma));
   add("write_fuse", yn(gWriteFuse));
@@ -159,13 +159,17 @@ void Collect(const G4Run* run, const std::string& stem)
   // ---- every command executed so far (macros included): beam, cuts, seeds, /lxe/onlyEdep ... ----
   auto* ui = G4UImanager::GetUIpointer();
   int n = 0;
+  std::string seedCmd = "none (engine default)";
   for (int i = 0; i < ui->GetNumberOfHistory(); ++i) {
     const std::string cmd = ui->GetPreviousCommand(i);
+    if (cmd.rfind("/random/setSeed", 0) == 0) seedCmd = cmd;      // setSeeds or setSeed, last one wins
     if (cmd.rfind("/vis/", 0) == 0) continue;
     char key[16];
     std::snprintf(key, sizeof key, "cmd_%03d", n++);
     add(key, cmd);
   }
+
+  add("master_seed_cmd", seedCmd);
 
   gItems = it;
 
