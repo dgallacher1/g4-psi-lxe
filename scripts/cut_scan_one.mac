@@ -1,0 +1,6 @@
+# One point of the cut scan (called by cut_scan.mac with {cutUm} and {nEv} aliased).
+/run/setCut {cutUm} um
+/output/tag cut{cutUm}um
+/random/setSeeds 12345 67890
+/run/printProgress 5000
+/run/beamOn {nEv}
