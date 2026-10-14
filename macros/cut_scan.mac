@@ -1,0 +1,15 @@
+# Production-cut scan:   ./xenonSim macros/cut_scan.mac
+# One run per cut value, same seeds, each to its own file xenon_sim_cut<N>um.root.
+# Then:  python scripts/cut_scan.py            (edep, step granularity, plane fluences vs cut)
+# and feed the files to your NEST pipeline to compare the photon count.
+# The cut applies to the default region (LXe, steel, silicon planes); the foils keep
+# their own 2 um WindowRegion cut. Geant4 clamps the electron threshold at its lowest
+# production limit (~1 keV), so 1 um is effectively the floor.
+/run/initialize
+/control/execute macros/beam.mac
+
+# Only edep>0 steps: keeps the five files small (nSteps then counts those steps).
+/lxe/onlyEdep true
+
+/control/alias nEv 20000
+/control/foreach macros/cut_scan_one.mac cutUm "100 30 10 3 1"

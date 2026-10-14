@@ -10,9 +10,9 @@
 
 # Energy: monoenergetic here; swap for Gauss/User spectrum as needed.
 /gps/ene/type Mono
-/gps/ene/mono 80 MeV
+/gps/ene/mono 79.49 MeV
 #/gps/ene/type Gauss
-#/gps/ene/sigma 0.1 MeV
+/gps/ene/sigma 0.1 MeV
 
 # Transverse spot: 2D Gaussian in the plane normal to +x.
 # rot1/rot2 are the plane's local axes: sigma_x acts along rot1 (= world y),
