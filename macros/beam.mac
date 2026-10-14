@@ -10,7 +10,7 @@
 
 # Energy: monoenergetic here; swap for Gauss/User spectrum as needed.
 /gps/ene/type Mono
-/gps/ene/mono 5 MeV
+/gps/ene/mono 80 MeV
 #/gps/ene/type Gauss
 #/gps/ene/sigma 0.1 MeV
 

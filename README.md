@@ -14,12 +14,16 @@ No optical physics.
 - Port parts are located by **s** = distance from the vessel axis along the port (s = -x).
 
 ## Geometry: edit `include/GeometryParameters.hh` only
-Every number is wrapped as `GEO_V(placeholder)`. Replace the whole wrapper with the CAD value.
+All numbers are CAD values now. A new, not yet known dimension is entered as `GEO_V(placeholder)`;
+replace the whole wrapper with the CAD value once known.
 
 | Build option | Unreplaced `GEO_V` entries |
 |---|---|
-| `-DGEO_DEMO=ON` (default) | placeholders are used; loud DEMO banner; output is `xenon_sim_DEMO.root` |
-| `-DGEO_DEMO=OFF` | become NaN; the app **refuses to build** and lists exactly what is missing |
+| `-DGEO_DEMO=OFF` (**use this**) | become NaN; the app **refuses to build** and lists exactly what is missing. Output is `xenon_sim[_<tag>].root` |
+| `-DGEO_DEMO=ON` (CMake default) | placeholders are used; loud DEMO banner; output is `xenon_sim_DEMO[_<tag>].root` |
+
+`GEO_DEMO` defaults to ON in `CMakeLists.txt`, so pass `-DGEO_DEMO=OFF` on the first configure (it is cached in
+`CMakeCache.txt`). With no placeholder left in the header, ON only adds the DEMO banner and the `_DEMO` file name.
 
 Each run also writes `geometry_manifest.json` (all dimensions, plane centres/normals/areas,
 `isDemo`); the analysis scripts read it, so plane areas can never drift from the C++.
@@ -37,11 +41,12 @@ cut, stub roots cut, on-axis foil thickness, LXe/vacuum extents, planes inside t
 ## Build & run
 ```bash
 mkdir build && cd build
-cmake -DCMAKE_PREFIX_PATH=/path/to/geant4-install [-DGEO_DEMO=OFF] ..
-make -j
+cmake -DCMAKE_PREFIX_PATH=/path/to/geant4-install -DGEO_DEMO=OFF ..
+make -j                            # new macros/*.mac are staged at configure time: re-run cmake after adding one
 ./geometryProbe                    # geometry self-check
 ./xenonSim macros/vis.mac          # geometry images (RayTracer, no display needed)
 ./xenonSim macros/budget_scan.mac  # geantino material budget
+./xenonSim macros/smoke_test.mac   # 200 events, checks the output trees (then: python scripts/smoke_check.py xenon_sim_smoke.root)
 ./xenonSim macros/run.mac          # GPS positron beam
 ./xenonSim macros/beam_file.mac    # G4Beamline phase-space file
 ```
@@ -112,3 +117,15 @@ and the same coordinates again as `x y z x_pri y_pri z_pri` (uproot raises on a 
 
 `tree=` is required: with `tree=None` the loader takes the first TTree in the file, which is `steps`.
 Switch off with `/output/fuse false`; `/lxe/onlyEdep true` keeps these rows (it only drops zero-deposit steps that are not gamma interactions).
+
+## Beam paths in the real geometry (`primary_path`, `geometryProbe --map`, `beam_path.py`)
+No graphics driver or viewer is needed.
+- `./geometryProbe --map [step_mm]` samples the solids the application places (`GeoBuild::Build()`, i.e. the CAD numbers of
+  `GeometryParameters.hh`) on a 0.5 mm grid in the z = 0 and y = 0 planes and writes `geometry_map_xy.txt` and
+  `geometry_map_xz.txt`; it also counts sample points inside two solids that should be disjoint (overlap check, expect 0).
+  The alpha-source GDML is not part of it.
+- ntuple `primary_path` (switch `/output/path`, default on): the start point and the end of every step of the beam particle
+  (trackID 1) in **every** volume (air, Al foil, vacuum, Ti foil, LXe), with the volume name.
+- `python scripts/beam_path.py xenon_sim.root geometry_manifest.json [n_events]` draws top and side views of the primaries over
+  the map (run it in the directory that holds the two map files; without them it draws from the manifest numbers; without
+  `primary_path` it falls back to a dashed straight line from the vertex to the first LXe step).

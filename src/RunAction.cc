@@ -24,6 +24,8 @@ RunAction::RunAction()
     fMessenger->DeclareProperty("fuse", gWriteFuse,
         "false: do not fill tree_fuse (lineage table read by Clustering.load_interactions)")
         .SetToBeBroadcasted(false);
+    fMessenger->DeclareProperty("path", gWritePath,
+        "false: do not fill primary_path (beam particle steps in every volume)").SetToBeBroadcasted(false);
     fMessenger->DeclareProperty("steps", gWriteSteps,
         "false: do not fill the steps ntuple (smaller files when only tree_chroma is needed)")
         .SetToBeBroadcasted(false);
@@ -130,6 +132,19 @@ RunAction::RunAction()
   // x_pri when the plain-named column exists. Prefers xp over x, so no double counting.
   for (const char* c : {"x", "y", "z", "x_pri", "y_pri", "z_pri"})
     man->CreateNtupleDColumn(c);             // 15..20, mm
+  man->FinishNtuple();
+
+  // --- ntuple 6: primary_path, the beam particle's steps in EVERY volume ---------------------
+  // Start point, then the end of each step; "volume" is the physical volume the step ran in.
+  man->CreateNtuple("primary_path", "beam particle path through all volumes");
+  man->CreateNtupleIColumn("eventID");     // 0
+  man->CreateNtupleIColumn("step");        // 1  0 = start point
+  man->CreateNtupleDColumn("x_mm");        // 2
+  man->CreateNtupleDColumn("y_mm");        // 3
+  man->CreateNtupleDColumn("z_mm");        // 4
+  man->CreateNtupleDColumn("kinE_keV");    // 5
+  man->CreateNtupleDColumn("time_ns");     // 6
+  man->CreateNtupleSColumn("volume");      // 7
   man->FinishNtuple();
 }
 

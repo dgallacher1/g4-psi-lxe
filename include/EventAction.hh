@@ -3,8 +3,11 @@
 
 #include "G4UserEventAction.hh"
 #include "globals.hh"
+#include "G4ThreeVector.hh"
 
 #include <map>
+#include <string>
+#include <vector>
 
 class G4Event;
 
@@ -14,6 +17,7 @@ class G4Event;
 // Ntuples (ids fixed in RunAction):
 //   0 steps    1 events    2 fluence    3 budget    4 tree_chroma (one row per energy-depositing LXe step; GPU-simulation input)
 //   5 tree_fuse (same rows + gamma interactions, lineage columns for Clustering.py)
+//   6 primary_path (every step of the beam particle in every volume: the true path into the vessel)
 class EventAction : public G4UserEventAction
 {
  public:
@@ -25,9 +29,14 @@ class EventAction : public G4UserEventAction
 
   // Called by SteppingAction (geantino scans only).
   void SetScanStart(G4double y, G4double z) { fY0 = y; fZ0 = z; }
+  // Called by SteppingAction for trackID 1: one point of the primary's path (any volume).
+  void AddPathPoint(const G4ThreeVector& p, G4double kinE, G4double t, const std::string& volume)
+  { fPath.push_back({p.x(), p.y(), p.z(), kinE, t, volume}); }
   void AddBudget(const G4String& volume, G4double len, G4double x0, G4double lambda, G4double massThick);
 
  private:
+  struct PathPt { G4double x, y, z, kinE, t; std::string vol; };
+  std::vector<PathPt> fPath;
   struct Budget { G4double len = 0., x0 = 0., lambda = 0., massThick = 0.; };
   std::map<G4String, Budget> fBudget;
   G4double fY0 = 0., fZ0 = 0.;

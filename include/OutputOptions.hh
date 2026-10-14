@@ -7,6 +7,7 @@
 // during a run, so one shared copy is enough.
 inline G4bool gWriteChroma = true;    // fill the tree_chroma ntuple (input of the GPU simulation)
 inline G4bool gWriteFuse   = true;    // fill the tree_fuse ntuple (lineage-clustering input)
+inline G4bool gWritePath   = true;    // fill primary_path: the beam particle's steps in EVERY volume
 inline G4bool gWriteSteps  = true;    // fill the per-step "steps" ntuple
 
 #endif

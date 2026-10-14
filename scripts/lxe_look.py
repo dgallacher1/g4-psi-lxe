@@ -66,6 +66,7 @@ if geo:
 species = sorted(by_pdg, key=lambda c: -by_pdg[c])[:6]
 ax[0, 2].bar([name(c) for c in species], [by_pdg[c] / n_ev for c in species])
 ax[0, 2].set(ylabel="keV per event", title="deposit by particle", yscale="log")
+ax[0, 2].tick_params(axis="x", labelrotation=45)
 
 # tracks of the first few events with LXe steps: black = beam particle, red e+, blue e-, grey other
 shown = [e for e in ev["eventID"] if np.any(st["eventID"] == e)][:n_draw]

@@ -26,6 +26,7 @@ G4double ParticleClass(G4int pdg)
 
 void EventAction::BeginOfEventAction(const G4Event*)
 {
+  fPath.clear();
   gTrackLabels.clear();               // per-event track labels (filled by TrackingAction)
   fBudget.clear();
   fY0 = fZ0 = 0.;
@@ -151,6 +152,22 @@ void EventAction::EndOfEventAction(const G4Event* evt)
         man->AddNtupleRow(2);
         planeEdep += h->edep;
       }
+    }
+  }
+
+  // ---- ntuple 6: the beam particle's path through every volume ---------------------------------
+  if (gWritePath) {
+    G4int k = 0;
+    for (const auto& q : fPath) {
+      man->FillNtupleIColumn(6, 0, eid);
+      man->FillNtupleIColumn(6, 1, k++);
+      man->FillNtupleDColumn(6, 2, q.x / mm);
+      man->FillNtupleDColumn(6, 3, q.y / mm);
+      man->FillNtupleDColumn(6, 4, q.z / mm);
+      man->FillNtupleDColumn(6, 5, q.kinE / keV);
+      man->FillNtupleDColumn(6, 6, q.t / ns);
+      man->FillNtupleSColumn(6, 7, q.vol);
+      man->AddNtupleRow(6);
     }
   }
 

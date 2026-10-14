@@ -1,0 +1,15 @@
+# Smoke test of tree_chroma / tree_fuse / steps:   ./xenonSim macros/smoke_test.mac
+# 200 beam e+ -> xenon_sim_smoke.root (a few MB). Then:
+#   python scripts/lxe_look.py xenon_sim_smoke.root
+#   python scripts/smoke_check.py xenon_sim_smoke.root   (cross-checks the three trees, if you take it)
+/run/initialize
+/control/execute macros/beam.mac
+
+/output/tag smoke
+/output/chroma true
+/output/fuse true
+/output/steps true
+/lxe/onlyEdep true
+/random/setSeeds 12345 67890
+/run/printProgress 50
+/run/beamOn 200

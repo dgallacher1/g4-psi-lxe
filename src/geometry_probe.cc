@@ -17,8 +17,10 @@
 
 #include "G4VSolid.hh"
 #include <cmath>
+#include <fstream>
 #include <iostream>
 #include <string>
+#include <vector>
 
 namespace {
 
@@ -50,11 +52,71 @@ Ray AxisRay(G4VSolid* v, G4double outerFaceS)
   return {d - 1.*mm, v->DistanceToOut(p1, dir) + eps};
 }
 
+// ---- ./geometryProbe --map [step_mm] ---------------------------------------------------------
+// Samples the REAL solids of the application (the same GeoBuild::Build() that DetectorConstruction
+// places) on a grid and writes two slices for scripts/beam_path.py:
+//   geometry_map_xy.txt  z = 0 plane,  geometry_map_xz.txt  y = 0 plane
+// Line 1: "# x0 x1 v0 v1 step nx nv"; then nv rows (v ascending) of nx integer labels.
+// Labels: 0 world(air) 1 jacket vacuum 2 LXe 3 outer wall 4 inner wall 5 outer stub 6 outer flange
+//         7 inner flange 8 Al foil 9 Ti foil 10 sleeve 11 inner stub
+// The foils are thinner than a cell: a cell is painted as foil if the foil is hit anywhere across it.
+// The grid is offset by an irrational fraction of a cell so that no sample sits on a surface.
+// Also reports sample points that lie inside two solids that should be disjoint (overlap check).
+struct Entry { const G4VSolid* s; int label; };
+
+int WriteMap(const GeoBuild::Solids& S, const char* file, bool xz, double step)
+{
+  using namespace Geo;
+  const double x0 = -(outerPort.flangeS1 + 40.), x1 = outer.cavityR + outer.wallT + 30.;
+  const double v0 = xz ? outer.cavityZmin - outer.bottomT - 10. : -(outer.cavityR + outer.wallT + 10.);
+  const double v1 = xz ? outer.cavityZmax + outer.topT + 10.    :  (outer.cavityR + outer.wallT + 10.);
+  const int nx = int((x1 - x0) / step), nv = int((v1 - v0) / step);
+  // priority order for the label (most specific first)
+  std::vector<Entry> solids = {{S.lxe, 2}, {S.tiWindow, 9}, {S.alWindow, 8}, {S.innerFlange, 7}, {S.outerFlange, 6},
+                               {S.outerStub, 5}, {S.innerStub, 11}, {S.sleeve, 10}, {S.innerWall, 4},
+                               {S.innerBottom, 4}, {S.innerTop, 4}, {S.outerWall, 3}, {S.outerBottom, 3},
+                               {S.outerTop, 3}};
+  std::ofstream f(file);
+  f << "# " << x0 << " " << x1 << " " << v0 << " " << v1 << " " << step << " " << nx << " " << nv << "\n";
+  long overlaps = 0;
+  for (int j = 0; j < nv; ++j) {
+    for (int i = 0; i < nx; ++i) {
+      const double x = x0 + (i + 0.5 + 0.0137) * step, v = v0 + (j + 0.5 + 0.0291) * step;
+      const G4ThreeVector p(x, xz ? 0. : v, xz ? v : 0.);
+      int label = 0, n = 0;
+      for (const auto& e : solids) {
+        if (!e.s) continue;
+        if (e.s->Inside(p) == kInside) { if (n++ == 0) label = e.label; }
+      }
+      if (n > 1) ++overlaps;
+      if (label == 0 && S.jacket->Inside(p) == kInside) label = 1;
+      const Entry foils[2] = {{S.tiWindow, 9}, {S.alWindow, 8}};                          // thin foils
+      const double xf[2] = {-(tiWindow.outerFaceS - 0.5 * tiWindow.thickness), -(alWindow.outerFaceS - 0.5 * alWindow.thickness)};
+      for (int q = 0; q < 2; ++q) {
+        if (std::abs(x - xf[q]) > step) continue;                  // only cells that can touch the foil
+        for (int k = -25; k <= 25 && label != foils[q].label; ++k)  // 51 samples across the cell (< 1/50 cell apart)
+          if (foils[q].s->Inside(G4ThreeVector(x + k * step / 50., p.y(), p.z())) == kInside) label = foils[q].label;
+      }
+      f << label << (i + 1 < nx ? ' ' : '\n');
+    }
+  }
+  std::cout << "wrote " << file << " (" << nx << " x " << nv << " cells of " << step << " mm); sample points inside two "
+            << "solids that should be disjoint: " << overlaps << "\n";
+  return overlaps ? 1 : 0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv)
 {
   using namespace Geo;
+
+  if (argc > 1 && std::string(argv[1]) == "--map") {          // geometry slices for the plotting script
+    if (!Validate().empty()) { std::cerr << "header incomplete\n"; return 1; }
+    const double step = argc > 2 ? std::atof(argv[2]) : 0.5;
+    const auto S = GeoBuild::Build();
+    return WriteMap(S, "geometry_map_xy.txt", false, step) | WriteMap(S, "geometry_map_xz.txt", true, step);
+  }
 
   if (argc > 1 && std::string(argv[1]) == "--manifest") {   // dump geometry_manifest.json to stdout
     if (!Validate().empty()) { std::cerr << "header incomplete\n"; return 1; }

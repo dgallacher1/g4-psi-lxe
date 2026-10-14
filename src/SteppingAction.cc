@@ -1,5 +1,6 @@
 #include "SteppingAction.hh"
 #include "EventAction.hh"
+#include "OutputOptions.hh"
 
 #include "G4Step.hh"
 #include "G4Track.hh"
@@ -28,6 +29,19 @@ void SteppingAction::UserSteppingAction(const G4Step* step)
 {
   auto* track = step->GetTrack();
   const auto* def = track->GetDefinition();
+
+  // Beam particle path in every volume (air, foils, vacuum, LXe ...): start point, then the post-step
+  // point of every step labelled with the volume the step ran in. Written to the "primary_path" ntuple.
+  if (gWritePath && track->GetTrackID() == 1 && def != fGeantino && def != fChargedGeantino) {
+    auto* pv0 = step->GetPreStepPoint()->GetPhysicalVolume();
+    const std::string vol = pv0 ? pv0->GetName() : "OutOfWorld";
+    if (track->GetCurrentStepNumber() == 1)
+      fEventAction->AddPathPoint(step->GetPreStepPoint()->GetPosition(), step->GetPreStepPoint()->GetKineticEnergy(),
+                                 step->GetPreStepPoint()->GetGlobalTime(), vol);
+    fEventAction->AddPathPoint(step->GetPostStepPoint()->GetPosition(), step->GetPostStepPoint()->GetKineticEnergy(),
+                               step->GetPostStepPoint()->GetGlobalTime(), vol);
+  }
+
   if (def != fGeantino && def != fChargedGeantino) return;
 
   auto* pre = step->GetPreStepPoint();
