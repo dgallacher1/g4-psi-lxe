@@ -23,6 +23,9 @@
 
 namespace Out {
 
+// Bump when a column is added, removed or changes meaning; written to run_info as "schema_version".
+inline constexpr int kSchemaVersion = 2;
+
 enum class T { Int, Dbl, Str };
 struct ColumnSpec { const char* name; T type; const char* description; };
 
@@ -158,6 +161,12 @@ OUT_NTUPLE(Fuse, 5, "tree_fuse", "per-step lineage table for Clustering.py", OUT
   X(Dbl, time_ns,  "global time")                                                       \
   X(Str, volume,   "physical volume the step ran in")
 OUT_NTUPLE(Path, 6, "primary_path", "beam particle path through all volumes", OUT_COLS_PATH)
+
+// ---- 7 run_info: provenance of the run, one (key, value) row per item; see RunMeta.cc ----------
+#define OUT_COLS_META(X)                                                               \
+  X(Str, key,   "item name (cmd_NNN = the NNNth command executed, /vis/ commands left out)") \
+  X(Str, value, "item value, as text")
+OUT_NTUPLE(Meta, 7, "run_info", "provenance of the run: versions, physics, cuts, seeds, commands", OUT_COLS_META)
 
 #undef OUT_ENUM
 #undef OUT_SPEC

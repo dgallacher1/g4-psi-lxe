@@ -42,7 +42,7 @@ cut, stub roots cut, on-axis foil thickness, LXe/vacuum extents, planes inside t
 ```bash
 mkdir build && cd build
 cmake -DCMAKE_PREFIX_PATH=/path/to/geant4-install -DGEO_DEMO=OFF ..
-make -j                            # new macros/*.mac are staged at configure time: re-run cmake after adding one
+make -j                            # the git commit is regenerated at every make; new macros/*.mac are staged at configure time: re-run cmake after adding one
 ./geometryProbe                    # geometry self-check
 ./xenonSim macros/vis.mac          # geometry images (RayTracer, no display needed)
 ./xenonSim macros/budget_scan.mac  # geantino material budget
@@ -78,6 +78,7 @@ Switches (master commands, between runs): `/output/steps`, `/output/chroma`, `/o
 |---|---|
 | `steps` | every step in the bulk LXe (full polylines, edep, `niel_keV` = non-ionising part of edep, PDG, IDs). `/lxe/onlyEdep true` keeps only edep > 0 rows (smaller; not for trajectory plots) |
 | `tree_chroma` | input of the GPU optical-photon simulation, same layout as the other simulation's: one row per energy-depositing LXe step, 14 double columns `event hits xpos ypos zpos time edep energy x_momentum y_momentum z_momentum particle_name PDG trackID` (mm, ns, keV; `hits` = row index within the event; `particle_name` = 1 gamma, 2 neutron, 3 e-, 4 e+, 5 other; positions and time post-step, `energy`/momentum pre-step). `/output/chroma false` and `/output/steps false` switch the trees off |
+| `run_info` | provenance of the run, one (key, value) row per item: schema version, UTC time, Geant4 version, compiler, git commit (`-dirty` = uncommitted changes compiled in), geometry fingerprint, events, threads, master seeds, output switches, physics constructors, EM flags, production cuts per region, and every command executed so far (`cmd_NNN`, `/vis/` left out: beam, cuts, seeds, `/lxe/onlyEdep`). The same content is written at the start of each run to `<output>_run_info.json`, so a crashed run still has it |
 | `tree_fuse` | lineage table for `Clustering.py`, see below |
 | `primary_path` | the beam particle's steps in every volume, see below |
 | `events` | per-event `edep_keV` (xenon), `nSteps`, `edepPlanes_keV` (silicon planes) |

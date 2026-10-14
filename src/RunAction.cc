@@ -3,6 +3,7 @@
 #include "PrimaryGeneratorAction.hh"
 #include "OutputOptions.hh"
 #include "OutputSchema.hh"
+#include "RunMeta.hh"
 
 #include "G4AnalysisManager.hh"
 #include "G4Run.hh"
@@ -45,9 +46,10 @@ RunAction::RunAction()
   Out::Create<Out::Chroma>(man);    // input of the GPU optical-photon simulation
   Out::Create<Out::Fuse>(man);      // input of Clustering.py (lineage clustering)
   Out::Create<Out::Path>(man);      // beam particle path through every volume
+  Out::Create<Out::Meta>(man);      // provenance of the run (RunMeta)
 }
 
-void RunAction::BeginOfRunAction(const G4Run*)
+void RunAction::BeginOfRunAction(const G4Run* run)
 {
   // Master only: restart a shared G4Beamline phase-space file so every run
   // consumes it from the first record.
@@ -56,12 +58,25 @@ void RunAction::BeginOfRunAction(const G4Run*)
   // Placeholder geometry can never be mistaken for CAD output: the file name says so.
   G4String name = Geo::isDemo ? "xenon_sim_DEMO" : "xenon_sim";
   if (!sTag.empty()) name += "_" + sTag;
+  // Provenance: collected once on the master, written to <name>_run_info.json at once.
+  if (G4Threading::IsMasterThread()) RunMeta::Collect(run, name);
   G4AnalysisManager::Instance()->OpenFile(name);
 }
 
 void RunAction::EndOfRunAction(const G4Run*)
 {
   auto* man = G4AnalysisManager::Instance();
+
+  // run_info: one thread fills it (worker 0 in MT, the only thread otherwise); the merge on Write()
+  // brings the rows into the master file. Rows come from RunMeta, collected by the master at the start.
+  if (!G4Threading::IsMultithreadedApplication() || G4Threading::G4GetThreadId() == 0) {
+    Out::Row<Out::Meta> r(man);
+    for (const auto& kv : RunMeta::Get()) {
+      r.set(Out::Meta::key, kv.first);
+      r.set(Out::Meta::value, kv.second);
+      r.add();
+    }
+  }
   man->Write();
   man->CloseFile();
 }

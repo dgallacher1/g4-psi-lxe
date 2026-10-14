@@ -35,6 +35,7 @@ int main(int argc, char** argv)
   visManager->Initialize();
 
   auto* UI = G4UImanager::GetUIpointer();
+  UI->SetMaxHistSize(5000);                   // keep the executed commands (default 20) for run_info
 
   if (ui) {                                   // interactive
     UI->ApplyCommand("/control/execute macros/vis.mac");

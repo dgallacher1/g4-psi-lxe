@@ -34,3 +34,16 @@ print(fz.groupby(["creaproc", "type"])["ed"].agg(["count", "sum"]).sort_values("
 print("\nedproc counts:\n", fz.edproc.value_counts().head(10).to_string())
 print("\nparenttype of primaries (parentid==0):", fz[fz.parentid == 0].parenttype.unique(),
       fz[fz.parentid == 0].creaproc.unique())
+
+if "run_info" in f:                                       # provenance written by RunMeta
+    ri = table(f["run_info"], ["key", "value"])
+    print("\nrun_info:")
+    for k, v in zip(ri.key, ri.value):
+        if not str(k).startswith("cmd_"):
+            print(f"  {k:<46} {v}")
+    cmds = [str(v) for k, v in zip(ri.key, ri.value) if str(k).startswith("cmd_")]
+    print(f"  commands recorded: {len(cmds)}; last 8:")
+    for c in cmds[-8:]:
+        print("    ", c)
+else:
+    print("\nno run_info ntuple (file from an older build)")
