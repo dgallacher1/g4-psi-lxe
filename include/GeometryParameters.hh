@@ -210,7 +210,7 @@ inline constexpr G4double innerPocketR = 20.*mm;   // cavity-side opening of the
 inline constexpr Window tiWindow = {
   /*thickness */ 0.5*mm,               // 500 um
   /*outerFaceS*/ 60.5*mm,
-  "TiWindowAlloy"                      // custom material, PLACEHOLDER composition: see Materials.cc
+  "TiWindowAlloy"                      // custom material Ti-6Al-4V: see Materials.cc
 };
 
 // ----------------------------------------------------------------------------

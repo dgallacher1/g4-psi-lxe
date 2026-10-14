@@ -34,21 +34,15 @@ const std::vector<Recipe>& Recipes()
 
     // AISI / ASTM 304 stainless steel, nominal composition (mass %): Cr 18-20, Ni 8-10.5, Mn <= 2, Si <= 0.75,
     // C <= 0.08, P <= 0.045, S <= 0.03, balance Fe. The values below are mid-range typicals; the density is the
-    // usual 7.93 g/cm3 (G4_STAINLESS-STEEL is Fe 74 / Cr 18 / Ni 8 at 8.0 g/cm3). Replace with the mill
-    // certificate if one exists.
-    {"SS304", 7.93 * g / cm3, false, "nominal 304; replace with the mill certificate if available",
+    // usual 7.93 g/cm3 (G4_STAINLESS-STEEL is Fe 74 / Cr 18 / Ni 8 at 8.0 g/cm3).
+    {"SS304", 7.93 * g / cm3, false, "nominal 304",
      {{"Fe", 0.0}, {"Cr", 0.1900}, {"Ni", 0.0925}, {"Mn", 0.0100}, {"Si", 0.0050},
       {"C", 0.0004}, {"P", 0.0002}, {"S", 0.0001}}},
 
-    // Ti window alloy: PLACEHOLDER. Composition not confirmed yet, so this is pure titanium for now, at the
-    // density of G4_Ti (4.54 g/cm3, the NIST value), so it reproduces the earlier runs exactly.
-    // To enter the alloy: add the secondary components below as {symbol, mass fraction} (the Ti balance adjusts),
-    // set the confirmed density, and set placeholder to false. Example for Ti-6Al-4V (illustration only, not
-    // this alloy): {"Al", 0.06}, {"V", 0.04}, density 4.43 g/cm3.
-    {"TiWindowAlloy", 4.54 * g / cm3, true, "pure Ti at the density of G4_Ti, alloy composition pending",
-     {{"Ti", 0.0}
-      // , {"Al", 0.06}, {"V", 0.04}
-     }},
+    // Ti window alloy: Ti-6Al-4V (mass fractions Ti 0.90, Al 0.06, V 0.04, as in the GPU light simulation).
+    // Density 4.5 g/cm3, the value used in the GPU light simulation.
+    {"TiWindowAlloy", 4.5 * g / cm3, false, "Ti-6Al-4V, density 4.5 g/cm3 (as in the GPU simulation)",
+     {{"Ti", 0.0}, {"Al", 0.06}, {"V", 0.04}}},
   };
   return r;
 }
