@@ -13,6 +13,7 @@ class G4Event;
 //
 // Ntuples (ids fixed in RunAction):
 //   0 steps    1 events    2 fluence    3 budget    4 tree_chroma (one row per energy-depositing LXe step; GPU-simulation input)
+//   5 tree_fuse (same rows + gamma interactions, lineage columns for Clustering.py)
 class EventAction : public G4UserEventAction
 {
  public:

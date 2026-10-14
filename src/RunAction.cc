@@ -21,6 +21,9 @@ RunAction::RunAction()
         .SetToBeBroadcasted(false);
     fMessenger->DeclareProperty("chroma", gWriteChroma,
         "false: do not fill tree_chroma (GPU-simulation input)").SetToBeBroadcasted(false);
+    fMessenger->DeclareProperty("fuse", gWriteFuse,
+        "false: do not fill tree_fuse (lineage table read by Clustering.load_interactions)")
+        .SetToBeBroadcasted(false);
     fMessenger->DeclareProperty("steps", gWriteSteps,
         "false: do not fill the steps ntuple (smaller files when only tree_chroma is needed)")
         .SetToBeBroadcasted(false);
@@ -101,6 +104,32 @@ RunAction::RunAction()
   for (const char* c : {"event", "hits", "xpos", "ypos", "zpos", "time", "edep", "energy",
                         "x_momentum", "y_momentum", "z_momentum", "particle_name", "PDG", "trackID"})
     man->CreateNtupleDColumn(c);                                 // columns 0..13 in this order
+  man->FinishNtuple();
+
+  // --- ntuple 5: tree_fuse, the columns Clustering.load_interactions reads ------------------
+  // One row per energy-depositing LXe step, plus the zero-deposit gamma interaction steps (they are
+  // the lineage parents of the electrons they release). Units: keV, ns, mm.
+  man->CreateNtuple("tree_fuse", "per-step lineage table for Clustering.py");
+  man->CreateNtupleIColumn("eventid");       // 0
+  man->CreateNtupleIColumn("trackid");       // 1
+  man->CreateNtupleIColumn("parentid");      // 2
+  man->CreateNtupleSColumn("type");          // 3  particle name ("e-", "gamma", "alpha", "Pb208[...]")
+  man->CreateNtupleSColumn("parenttype");    // 4  parent's particle name, "none" for primaries
+  man->CreateNtupleSColumn("creaproc");      // 5  creator process, "none" for primaries
+  man->CreateNtupleSColumn("edproc");        // 6  process that ended the step
+  man->CreateNtupleDColumn("ed");            // 7  keV
+  man->CreateNtupleDColumn("t");             // 8  ns (post-step)
+  man->CreateNtupleDColumn("xp");            // 9  mm (post-step)
+  man->CreateNtupleDColumn("yp");            // 10
+  man->CreateNtupleDColumn("zp");            // 11
+  man->CreateNtupleDColumn("xp_pri");        // 12 primary vertex, mm
+  man->CreateNtupleDColumn("yp_pri");        // 13
+  man->CreateNtupleDColumn("zp_pri");        // 14
+  // Same values again under the plain names: Clustering.load_interactions asks uproot for all of
+  // xp/x, xp_pri/x_pri... in one call and uproot raises on a missing branch; it also only keeps
+  // x_pri when the plain-named column exists. Prefers xp over x, so no double counting.
+  for (const char* c : {"x", "y", "z", "x_pri", "y_pri", "z_pri"})
+    man->CreateNtupleDColumn(c);             // 15..20, mm
   man->FinishNtuple();
 }
 

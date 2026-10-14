@@ -3,6 +3,7 @@
 #include "RunAction.hh"
 #include "EventAction.hh"
 #include "SteppingAction.hh"
+#include "TrackingAction.hh"
 
 void ActionInitialization::BuildForMaster() const
 {
@@ -16,4 +17,5 @@ void ActionInitialization::Build() const
   auto* ea = new EventAction();
   SetUserAction(ea);
   SetUserAction(new SteppingAction(ea));   // acts on geantinos only
+  SetUserAction(new TrackingAction());     // particle / parent / creator labels for tree_fuse
 }

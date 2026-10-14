@@ -4,6 +4,7 @@
 #include "OutputOptions.hh"
 
 #include "G4Event.hh"
+#include "G4PrimaryVertex.hh"
 #include "G4HCofThisEvent.hh"
 #include "G4SDManager.hh"
 #include "G4AnalysisManager.hh"
@@ -25,6 +26,7 @@ G4double ParticleClass(G4int pdg)
 
 void EventAction::BeginOfEventAction(const G4Event*)
 {
+  gTrackLabels.clear();               // per-event track labels (filled by TrackingAction)
   fBudget.clear();
   fY0 = fZ0 = 0.;
 }
@@ -44,6 +46,8 @@ void EventAction::EndOfEventAction(const G4Event* evt)
   G4double totalEdep = 0., planeEdep = 0.;
   G4int nSteps = 0;
   G4int chromaRow = 0;                // row index within this event in tree_chroma
+  G4ThreeVector priPos;               // primary vertex (tree_fuse xp_pri...)
+  if (auto* pv = evt->GetPrimaryVertex()) priPos = G4ThreeVector(pv->GetX0(), pv->GetY0(), pv->GetZ0());
 
   if (auto* hce = evt->GetHCofThisEvent()) {
     auto* sdm = G4SDManager::GetSDMpointer();
@@ -73,6 +77,33 @@ void EventAction::EndOfEventAction(const G4Event* evt)
           man->FillNtupleDColumn(4, 12, h->pdg);
           man->FillNtupleDColumn(4, 13, h->trackID);
           man->AddNtupleRow(4);
+        }
+
+        // tree_fuse: energy deposits + gamma interactions (lineage parents), see XenonSD
+        if (gWriteFuse && (h->edep > 0. || (h->pdg == 22 && h->edproc != "Transportation"))) {
+          const TrackLabel* L = h->label;
+          man->FillNtupleIColumn(5, 0, eid);
+          man->FillNtupleIColumn(5, 1, h->trackID);
+          man->FillNtupleIColumn(5, 2, h->parentID);
+          man->FillNtupleSColumn(5, 3, L ? L->type : std::string("unknown"));
+          man->FillNtupleSColumn(5, 4, L ? L->parenttype : std::string("none"));
+          man->FillNtupleSColumn(5, 5, L ? L->creaproc : std::string("none"));
+          man->FillNtupleSColumn(5, 6, h->edproc);
+          man->FillNtupleDColumn(5, 7, h->edep / keV);
+          man->FillNtupleDColumn(5, 8, h->postTime / ns);
+          man->FillNtupleDColumn(5, 9, h->postPos.x() / mm);
+          man->FillNtupleDColumn(5, 10, h->postPos.y() / mm);
+          man->FillNtupleDColumn(5, 11, h->postPos.z() / mm);
+          man->FillNtupleDColumn(5, 12, priPos.x() / mm);
+          man->FillNtupleDColumn(5, 13, priPos.y() / mm);
+          man->FillNtupleDColumn(5, 14, priPos.z() / mm);
+          man->FillNtupleDColumn(5, 15, h->postPos.x() / mm);   // duplicates, see RunAction.cc
+          man->FillNtupleDColumn(5, 16, h->postPos.y() / mm);
+          man->FillNtupleDColumn(5, 17, h->postPos.z() / mm);
+          man->FillNtupleDColumn(5, 18, priPos.x() / mm);
+          man->FillNtupleDColumn(5, 19, priPos.y() / mm);
+          man->FillNtupleDColumn(5, 20, priPos.z() / mm);
+          man->AddNtupleRow(5);
         }
 
         if (!gWriteSteps) continue;

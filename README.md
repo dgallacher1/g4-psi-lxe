@@ -37,7 +37,7 @@ cut, stub roots cut, on-axis foil thickness, LXe/vacuum extents, planes inside t
 ## Build & run
 ```bash
 mkdir build && cd build
-cmake -DCMAKE_PREFIX_PATH=/home/dgallacher/packages/geant4/g4-install/v11.4.2 [-DGEO_DEMO=OFF] ..
+cmake -DCMAKE_PREFIX_PATH=/path/to/geant4-install [-DGEO_DEMO=OFF] ..
 make -j
 ./geometryProbe                    # geometry self-check
 ./xenonSim macros/vis.mac          # geometry images (RayTracer, no display needed)
@@ -99,3 +99,16 @@ python scripts/quick_look.py   xenon_sim.root
 
 `xenon_sim.root` can be fed to `ReadROOTFile(...)` as is. Rows of a multi-threaded run are not in event order
 and an event's rows are not guaranteed to be contiguous, so group or sort by `event` (then `hits`).
+
+## Lineage clustering input (`tree_fuse`)
+
+Read by the existing `Clustering.py`; no clustering is done on the G4 side. One row per energy-depositing LXe
+step plus the zero-deposit gamma interaction steps (parents of the electrons they release).
+Columns: `eventid trackid parentid type parenttype creaproc edproc ed[keV] t[ns] xp yp zp xp_pri yp_pri zp_pri [mm]`
+and the same coordinates again as `x y z x_pri y_pri z_pri` (uproot raises on a missing branch, and the loader only keeps
+`x_pri` when the plain-named column exists). `creaproc` of any radioactive-decay process is written as `RadioactiveDecayBase`.
+
+    lin, merged = cluster_and_merge_from_root("xenon_sim.root", tree="tree_fuse")
+
+`tree=` is required: with `tree=None` the loader takes the first TTree in the file, which is `steps`.
+Switch off with `/output/fuse false`; `/lxe/onlyEdep true` keeps these rows (it only drops zero-deposit steps that are not gamma interactions).

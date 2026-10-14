@@ -6,6 +6,8 @@
 #include "G4Allocator.hh"
 #include "G4ThreeVector.hh"
 #include "globals.hh"
+#include "TrackLabels.hh"
+#include <string>
 
 // One hit == one step inside the LXe. Storing pre/post points preserves
 // the full track polyline (the "path"); edep gives the deposit.
@@ -30,6 +32,8 @@ class XenonHit : public G4VHit
   G4ThreeVector prePos;     // mm
   G4ThreeVector postPos;    // mm
   G4ThreeVector preMom;     // pre-step momentum (MeV/c)
+  const TrackLabel* label = nullptr;   // type / parent type / creator process of the track (this event)
+  std::string edproc;       // process that ended the step ("compt", "eIoni", "Transportation" ...)
 };
 
 using XenonHitsCollection = G4THitsCollection<XenonHit>;
