@@ -38,6 +38,15 @@ Construction (all solids built in world coordinates, `include/GeometryBuilders.h
 clearance, nesting, foils inside their bores) and probes the real solids (port on -x only, bores
 cut, stub roots cut, on-axis foil thickness, LXe/vacuum extents, planes inside the LXe).
 
+## Materials
+NIST materials, except two custom ones defined in `src/Materials.cc` (the only place to edit a composition or density):
+`SS304` (all vessel walls, bottoms, tops, stubs and flanges; nominal 304 by mass: Cr 19, Ni 9.25, Mn 1, Si 0.5, trace C/P/S,
+Fe balance, 7.93 g/cm3) and `TiWindowAlloy` (**placeholder**: pure Ti at the G4_Ti density until the alloy is confirmed; the
+code prints a PLACEHOLDER line at start-up and flags it in `run_info`). `Materials::Define()` runs in `xenonSim.cc` before the
+geometry is built; `GeometryParameters.hh` refers to the names. The `run_info` ntuple records every material used by the
+geometry with density and composition (`material[...]`), and which logical volume uses which (`lv[...]`).
+The alpha-source GDML still uses `G4_STAINLESS-STEEL` for its puck.
+
 ## Build & run
 ```bash
 mkdir build && cd build

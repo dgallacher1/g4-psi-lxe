@@ -6,6 +6,7 @@
 #include "DetectorConstruction.hh"
 #include "PhysicsList.hh"
 #include "ActionInitialization.hh"
+#include "Materials.hh"
 
 #include "G4RunManagerFactory.hh"
 #include "G4UImanager.hh"
@@ -27,6 +28,7 @@ int main(int argc, char** argv)
   auto* runManager =
       G4RunManagerFactory::CreateRunManager(G4RunManagerType::Default);
 
+  Materials::Define();                        // SS304, TiWindowAlloy: must exist before the geometry is built
   runManager->SetUserInitialization(new DetectorConstruction());
   runManager->SetUserInitialization(new PhysicsList());
   runManager->SetUserInitialization(new ActionInitialization());

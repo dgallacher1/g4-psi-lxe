@@ -12,6 +12,11 @@
 #include "G4VPhysicsConstructor.hh"
 #include "G4EmParameters.hh"
 #include "G4Region.hh"
+#include "G4LogicalVolume.hh"
+#include "G4LogicalVolumeStore.hh"
+#include "G4Material.hh"
+#include "G4Element.hh"
+#include "Materials.hh"
 #include "G4RegionStore.hh"
 #include "G4ProductionCuts.hh"
 #include "G4SystemOfUnits.hh"
@@ -20,6 +25,7 @@
 #include <cstdint>
 #include <ctime>
 #include <fstream>
+#include <map>
 #include <iomanip>
 #include <sstream>
 
@@ -127,6 +133,26 @@ void Collect(const G4Run* run, const std::string& stem)
       add("cuts_mm[" + region->GetName() + "]  gamma e- e+ proton",
           Num(pc->GetProductionCut("gamma") / mm) + " " + Num(pc->GetProductionCut("e-") / mm) + " " +
           Num(pc->GetProductionCut("e+") / mm) + " " + Num(pc->GetProductionCut("proton") / mm));
+    }
+  }
+
+  // ---- materials actually used by the geometry (name, density, composition by mass) ----
+  {
+    std::map<std::string, const G4Material*> used;
+    for (const auto* lv : *G4LogicalVolumeStore::GetInstance()) {
+      if (!lv->GetMaterial()) continue;
+      add("lv[" + lv->GetName() + "]", lv->GetMaterial()->GetName());
+      used[lv->GetMaterial()->GetName()] = lv->GetMaterial();
+    }
+    for (const auto& kv : used) {
+      const G4Material* m = kv.second;
+      std::ostringstream o;
+      o << "rho = " << Num(m->GetDensity() / (g / cm3)) << " g/cm3; ";
+      const auto* frac = m->GetFractionVector();
+      for (std::size_t i = 0; i < m->GetNumberOfElements(); ++i)
+        o << (*m->GetElementVector())[i]->GetName() << " " << Num(frac ? frac[i] : 1., 4) << (i + 1 < m->GetNumberOfElements() ? ", " : "");
+      if (Materials::IsPlaceholder(kv.first)) o << "   *** PLACEHOLDER composition ***";
+      add("material[" + kv.first + "]", o.str());
     }
   }
 

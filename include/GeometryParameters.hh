@@ -35,7 +35,7 @@
 //    A CAD-derived geometry can therefore never be silently mixed with
 //    placeholders.
 //
-//  Dimensions are mm (Geant4 internal units).  Material names are NIST names.
+//  Dimensions are mm (Geant4 internal units).  Material names are NIST names, except "SS304" and "TiWindowAlloy" (Materials.cc).
 // ============================================================================
 
 #include "G4SystemOfUnits.hh"
@@ -127,7 +127,7 @@ inline constexpr Vessel outer = {
   /*wallT     */ 6.*mm,
   /*bottomT   */ 4.*mm,
   /*topT      */ 4.*mm,
-  "G4_STAINLESS-STEEL"
+  "SS304"
 };
 
 inline constexpr Vessel inner = {
@@ -137,7 +137,7 @@ inline constexpr Vessel inner = {
   /*wallT     */ 2.*mm,
   /*bottomT   */ 4.*mm,
   /*topT      */ 4.*mm,
-  "G4_STAINLESS-STEEL"
+  "SS304"
 };
 
 // ----------------------------------------------------------------------------
@@ -155,7 +155,7 @@ inline constexpr Port outerPort = {
   /*flangeOR*/ 35.0*mm,
   /*flangeS0*/ 139.0*mm,
   /*flangeS1*/ 163.1*mm,
-  "G4_STAINLESS-STEEL"
+  "SS304"
 };
 
 // First (thin) window: aluminium, separates the jacket vacuum from the beamline side.
@@ -203,14 +203,14 @@ inline constexpr Port innerPort = {
   /*flangeOR*/ 34.8*mm,
   /*flangeS0*/ 46.23*mm,
   /*flangeS1*/ 68.71*mm,
-  "G4_STAINLESS-STEEL"
+  "SS304"
 };
 inline constexpr G4double innerPocketR = 20.*mm;   // cavity-side opening of the inner flange
 
 inline constexpr Window tiWindow = {
   /*thickness */ 0.5*mm,               // 500 um
   /*outerFaceS*/ 60.5*mm,
-  "G4_Ti"
+  "TiWindowAlloy"                      // custom material, PLACEHOLDER composition: see Materials.cc
 };
 
 // ----------------------------------------------------------------------------

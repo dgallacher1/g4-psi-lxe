@@ -23,10 +23,15 @@ include_directories(${PROJECT_SOURCE_DIR}/include ${PROJECT_BINARY_DIR}/generate
 # Git version for the run provenance: generated at BUILD time (not just at configure time), so the
 # commit recorded in the output is the one that was compiled. See cmake/GitVersion.cmake.
 set(GIT_VERSION_HEADER ${PROJECT_BINARY_DIR}/generated/GitVersion.hh)
-add_custom_target(git_version ALL
-  COMMAND ${CMAKE_COMMAND} -DSRC=${PROJECT_SOURCE_DIR} -DOUT=${GIT_VERSION_HEADER}
-          -P ${PROJECT_SOURCE_DIR}/cmake/GitVersion.cmake
-  BYPRODUCTS ${GIT_VERSION_HEADER})
+set(GIT_VERSION_SCRIPT ${PROJECT_SOURCE_DIR}/cmake/GitVersion.cmake)
+if(EXISTS ${GIT_VERSION_SCRIPT})
+  add_custom_target(git_version ALL
+    COMMAND ${CMAKE_COMMAND} -DSRC=${PROJECT_SOURCE_DIR} -DOUT=${GIT_VERSION_HEADER}
+            -P ${GIT_VERSION_SCRIPT}
+    BYPRODUCTS ${GIT_VERSION_HEADER})
+else()
+  message(WARNING "cmake/GitVersion.cmake not found: run_info will record git = unknown")
+endif()
 
 file(GLOB sources CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/src/*.cc)
 file(GLOB headers CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/include/*.hh)
@@ -36,7 +41,9 @@ list(FILTER sources EXCLUDE REGEX "geometry_probe\\.cc$")
 
 add_executable(xenonSim xenonSim.cc ${sources} ${headers})
 target_link_libraries(xenonSim ${Geant4_LIBRARIES})
-add_dependencies(xenonSim git_version)
+if(TARGET git_version)
+  add_dependencies(xenonSim git_version)
+endif()
 
 # Geometry self-check: validates the header and probes the solids (no physics,
 # no data files needed).  Run it every time you change GeometryParameters.hh.
