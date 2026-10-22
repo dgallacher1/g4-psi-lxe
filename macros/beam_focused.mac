@@ -1,0 +1,43 @@
+# Option A: "focused tune" e+ beam, plane-wave-like at the port.
+# Round Gaussian spot, sigma = 10 mm in both transverse axes, centred on the port axis, zero divergence
+# (all tracks along +x).  Numbers from the PSM beam-rate report (focused tunes): sigma_x x sigma_y = 10.7 x 10.1 mm
+# at 85.3 MeV/c and 10 x 9 mm at 118.9 MeV/c, centred to 1-2 mm.  The divergence is not known and is not
+# modelled; the beam is monitored upstream.
+#
+# Frame: z = vessel axis, beam along +x.  Same GPS set-up as beam.mac, only the spot (and the comments) differ.
+# The start plane MUST be upstream of all material and inside the world: check the
+# "beam/scan start plane suggestion" line printed at startup.
+#
+# Acceptance to keep in mind: the Ti foil is limited to the inner-port bore (r = 12.5 mm), the Al window to the
+# outer-port bore (r = 19.2 mm), the flange pocket is r = 20 mm.  For a round sigma = 10 mm Gaussian the fraction
+# of primaries with r < 12.5 / 17.5 / 20 mm is 54 / 78 / 86 %; the rest shower in the flange steel.
+
+/beam/mode gps
+
+/gps/particle e+
+/gps/number 1
+
+# Energy: central value plus a Gaussian smear.  /gps/ene/sigma applies to Mono as well as Gauss (default 0).
+# 79.49 MeV (p = 80.0 MeV/c) with sigma = 0.25 MeV (0.31 %).  The momentum bite of this tune was NOT measured; the
+# value is an estimate from the PSM report: PSI's 1987 full-channel bite is 2.9 % FWHM (1.2 % sigma, 0.99 MeV here),
+# and FS13 at 30|30 (the focused tunes) passes ~0.32 (0.22-0.40) of it, which gives a window with rms 0.20-0.37 %
+# = 0.16-0.29 MeV.  Assumes a Gaussian bite centred on the slit and rate proportional to the momentum fraction passed.
+# Bounds: 0.1 MeV (beam.mac, tight) ... 0.99 MeV (full open channel).  The LXe response is insensitive to this choice.
+# Kinetic energy for the momentum (p in MeV/c): 80.0 -> 79.49, 85.3 -> 84.79, 118.9 -> 118.39 MeV.
+/gps/ene/type Mono
+/gps/ene/mono 79.49 MeV
+/gps/ene/sigma 0.25 MeV
+
+# Transverse spot: 2D Gaussian in the plane normal to +x.
+# rot1/rot2 are the plane's local axes: sigma_x acts along rot1 (= world y),
+# sigma_y along rot2 (= world z, the vessel axis).
+/gps/pos/type Beam
+/gps/pos/shape Circle
+/gps/pos/rot1 0 1 0
+/gps/pos/rot2 0 0 1
+/gps/pos/centre -175. 0. 0. mm
+/gps/pos/sigma_x 10. mm
+/gps/pos/sigma_y 10. mm
+
+# Plane wave: every track along +x.
+/gps/direction 1 0 0

@@ -48,14 +48,25 @@ def overlay_geometry(panel, b):
     panel.axvline(-geo["tiWindow"]["outerFaceS"], color="orange", lw=0.8)
     for p in geo["planes"]:                                # fluence planes (normals along x or z only)
         cx, cy, cz = p["centre"]
+        th = np.radians(p.get("rot", [0, 0, 0])[2])         # in-plane / tilt angle about z (0 if the manifest has no "rot")
+        n = p["normal"]
         other = cy if b == "y" else cz
-        if abs(p["normal"][0]) > 0.99:                     # normal along x: edge-on, a line at x = cx
-            h = p["halfV"] if b == "y" else p["halfU"]
-            panel.plot([cx, cx], [other - h, other + h], "r-", lw=2)
-        elif abs(p["normal"][2]) > 0.99:                   # normal along z: a box (top view) or a line (side view)
-            hu, hv = p["halfU"], (p["halfV"] if b == "y" else 0.0)
-            panel.plot([cx - hu, cx + hu, cx + hu, cx - hu, cx - hu],
-                       [other - hv, other - hv, other + hv, other + hv, other - hv], "r-", lw=2)
+        if abs(n[0]) > 0.99:                               # normal along x: a line at x = cx (tilted by th in the top view)
+            if b == "y":
+                d = np.array([-n[1], n[0]]) / np.hypot(n[0], n[1])        # in-plane direction in the top view
+                panel.plot([cx - p["halfU"] * d[0], cx + p["halfU"] * d[0]],
+                           [cy - p["halfU"] * d[1], cy + p["halfU"] * d[1]], "r-", lw=2)
+            else:
+                panel.plot([cx, cx], [cz - p["halfU"], cz + p["halfU"]], "r-", lw=2)
+        elif abs(n[2]) > 0.99:                             # normal along z: a (rotated) box in the top view, a line in the side view
+            hu, hv = p["halfU"], p["halfV"]
+            if b == "y":
+                cs, sn = np.cos(th), np.sin(th)
+                corners = [(hu, hv), (-hu, hv), (-hu, -hv), (hu, -hv), (hu, hv)]
+                panel.plot([cx + u * cs - v * sn for u, v in corners], [cy + u * sn + v * cs for u, v in corners], "r-", lw=2)
+            else:
+                ext = abs(hu * np.cos(th)) + abs(hv * np.sin(th))
+                panel.plot([cx - ext, cx + ext], [cz, cz], "r-", lw=2)
 
 
 # --- events: per-event totals (small) --------------------------------------------------------

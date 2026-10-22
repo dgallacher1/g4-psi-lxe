@@ -325,7 +325,50 @@ inline std::vector<std::string> Validate()
     fin(n + ".cavityZmax", v.cavityZmax); fin(n + ".wallT", v.wallT);
     fin(n + ".bottomT", v.bottomT);       fin(n + ".topT", v.topT);
   };
-  auto finPort = [&](const std::string& n, const Port& outer.cavityZmin, "inner vessel bottom plate collides with the outer cavity");
+  auto finPort = [&](const std::string& n, const Port& p) {
+    fin(n + ".boreR", p.boreR);     fin(n + ".stubOR", p.stubOR);
+    fin(n + ".flangeOR", p.flangeOR);
+    fin(n + ".flangeS0", p.flangeS0); fin(n + ".flangeS1", p.flangeS1);
+  };
+  finVessel("outer", outer);
+  finVessel("inner", inner);
+  finPort("outerPort", outerPort);
+  finPort("innerPort", innerPort);
+  fin("alWindow.thickness", alWindow.thickness); fin("alWindow.outerFaceS", alWindow.outerFaceS);
+  fin("tiWindow.thickness", tiWindow.thickness); fin("tiWindow.outerFaceS", tiWindow.outerFaceS);
+  if (sleeve.use) {
+    fin("sleeve.IR", sleeve.IR); fin("sleeve.OR", sleeve.OR);
+    fin("sleeve.s0", sleeve.s0); fin("sleeve.s1", sleeve.s1);
+  }
+  for (G4int i = 0; i < nPlanes; ++i) {
+    const auto& p = planes[i];
+    const std::string n = std::string("planes[") + std::to_string(i) + "] (" + p.name + ")";
+    fin(n + ".cx", p.cx); fin(n + ".cy", p.cy); fin(n + ".cz", p.cz);
+    fin(n + ".rotX", p.rotXdeg); fin(n + ".rotY", p.rotYdeg); fin(n + ".rotZ", p.rotZdeg);
+    fin(n + ".halfU", p.halfU); fin(n + ".halfV", p.halfV); fin(n + ".thickness", p.thickness);
+  }
+  fin("sourceX", sourceX); fin("sourceY", sourceY); fin("sourceZ", sourceZ);
+  if (!bad.empty()) return bad;           // geometric checks are meaningless with NaNs
+
+  auto req = [&](G4bool ok, const std::string& msg) { if (!ok) bad.push_back(msg); };
+
+  // --- basic sanity -------------------------------------------------------
+  for (const Vessel* v : {&outer, &inner}) {
+    const std::string n = (v == &outer) ? "outer" : "inner";
+    req(v->cavityR > 0 && v->wallT > 0 && v->bottomT > 0 && v->topT > 0,
+        n + ": radii/thicknesses must be > 0");
+    req(v->cavityZmax > v->cavityZmin, n + ": cavityZmax must exceed cavityZmin");
+  }
+  req(outerPort.boreR > 0 && outerPort.boreR < outerPort.stubOR && outerPort.stubOR < outerPort.flangeOR,
+      "outerPort: need 0 < boreR < stubOR < flangeOR");
+  req(innerPort.boreR > 0 && innerPort.boreR < innerPocketR && innerPocketR < innerPort.flangeOR,
+      "innerPort: need 0 < boreR < innerPocketR < flangeOR");
+  for (const Port* p : {&outerPort, &innerPort})
+    req(p->flangeS1 > p->flangeS0, (p == &outerPort ? "outerPort" : "innerPort") + std::string(": flangeS1 must exceed flangeS0"));
+
+  // --- nesting ------------------------------------------------------------
+  req(innerR() + 1.*mm <= outer.cavityR, "inner vessel (incl. wall) must fit inside the outer cavity with >= 1 mm clearance");
+  req(inner.cavityZmin - inner.bottomT > outer.cavityZmin, "inner vessel bottom plate collides with the outer cavity");
   req(inner.cavityZmax + inner.topT    < outer.cavityZmax, "inner vessel top plate collides with the outer cavity");
 
   // --- port geometry ------------------------------------------------------
@@ -369,6 +412,27 @@ inline std::vector<std::string> Validate()
         std::string("planes[") + std::to_string(i) + "]: halfU, halfV, thickness must be > 0");
     req(!p.circular || p.halfU == p.halfV,
         std::string("planes[") + std::to_string(i) + "]: a circular plane needs halfU == halfV (= radius)");
+
+    // The planes are children of the LXe: every point must lie inside it, or navigation is undefined.
+    const std::string pn = std::string("planes[") + std::to_string(i) + "] (" + p.name + ")";
+    const G4ThreeVector nrm = PlaneRotation(p) * G4ThreeVector(0, 0, 1);
+    if (std::abs(nrm.x()) > 0.9) {                       // port plane: must fit in the flange pocket round the port axis
+      const G4double r = std::hypot(p.cy, p.cz) + std::max(p.halfU, p.halfV);
+      req(r <= innerPocketR, pn + " extends to " + std::to_string(r) + " mm from the port axis, beyond the inner "
+          "flange pocket (radius " + std::to_string(innerPocketR) + " mm)");
+    } else if (std::abs(nrm.z()) > 0.9) {                // cavity plane: corners inside the cavity cylinder
+      G4double rmax = 0., zlo = 1e30, zhi = -1e30;
+      const G4RotationMatrix R = PlaneRotation(p);
+      for (int a = -1; a <= 1; a += 2) for (int b = -1; b <= 1; b += 2) for (int c = -1; c <= 1; c += 2) {
+        const G4ThreeVector q = R * G4ThreeVector(a * p.halfU, b * p.halfV, c * 0.5 * p.thickness)
+                              + G4ThreeVector(p.cx, p.cy, p.cz);
+        rmax = std::max(rmax, std::hypot(q.x(), q.y()));
+        zlo = std::min(zlo, q.z());  zhi = std::max(zhi, q.z());
+      }
+      req(rmax <= inner.cavityR, pn + " corner at r = " + std::to_string(rmax) + " mm is outside the LXe cavity (radius "
+          + std::to_string(inner.cavityR) + " mm)");
+      req(zlo >= inner.cavityZmin && zhi <= inner.cavityZmax, pn + " is outside the LXe cavity in z");
+    }
   }
   return bad;
 }
@@ -411,6 +475,7 @@ inline std::string ManifestJSON()
     o << "    {\"id\": " << i << ", \"name\": \"" << p.name << "\", \"centre\": [" << p.cx << ", " << p.cy << ", " << p.cz
       << "], \"normal\": [" << n.x() << ", " << n.y() << ", " << n.z() << "], \"halfU\": " << p.halfU
       << ", \"halfV\": " << p.halfV << ", \"thickness\": " << p.thickness
+      << ", \"rot\": [" << p.rotXdeg << ", " << p.rotYdeg << ", " << p.rotZdeg << "]"
       << ", \"circular\": " << (p.circular ? "true" : "false") << ", \"area\": " << PlaneArea(p)
       << "}" << (i + 1 < nPlanes ? "," : "") << "\n";
   }

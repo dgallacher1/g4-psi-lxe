@@ -1,0 +1,19 @@
+# LXe response with the focused-tune beam (option A):   ./xenonSim macros/lxe_focused.mac
+# -> xenon_sim_focused.root.  Then:  python scripts/lxe_look.py xenon_sim_focused.root
+#                                    python scripts/fluence.py xenon_sim_focused.root geometry_manifest.json
+# Switchable trees: tree_chroma only (fuse, steps and primary_path are off). events, fluence, budget and run_info are
+# always written; the scripts need events and fluence. Same size as lxe_response.mac, only the beam differs.
+# Only ~54 % of the primaries pass the 12.5 mm Ti-foil aperture, so expect a larger share of events with a small
+# or zero LXe deposit than in the 2 mm pencil-beam run.
+/run/initialize
+/control/execute macros/beam_focused.mac
+
+/output/tag focused
+/output/chroma true
+/output/fuse false
+/output/steps false
+/output/path false
+/lxe/onlyEdep true
+/random/setSeeds 20261022 1
+/run/printProgress 1000
+/run/beamOn 20000
