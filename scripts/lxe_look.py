@@ -70,7 +70,10 @@ edep = ev["edep_keV"]
 R = geo["inner"]["cavityR"] if geo else 150.0
 zlo = geo["inner"]["cavityZmin"] if geo else -150.0
 zhi = geo["inner"]["cavityZmax"] if geo else 150.0
-xe = np.linspace(-R, R, 161)                               # x edges (cavity diameter)
+# x runs from the Ti foil (the LXe fills the port bore up to it) to the far cavity wall; the cavity alone
+# (-R..R) would clip the port channel in front of the cavity.
+x_lo = -(geo["tiWindow"]["outerFaceS"] + 2.0) if geo else -R
+xe = np.linspace(x_lo, R, int((R - x_lo) / 0.625) + 1)     # x edges, ~0.625 mm bins
 ye = np.linspace(-R, R, 161)
 ze = np.linspace(zlo, zhi, 161)
 re = np.linspace(0, R, 61)                                 # distance from the beam axis (y = z = 0)
@@ -99,6 +102,8 @@ print(f"with LXe deposit {np.mean(edep > 0):.3f} | per event: mean {edep.mean():
       f"median(>0) {np.median(edep[edep > 0]) if np.any(edep > 0) else 0:.1f} keV, max {edep.max():.1f} keV")
 print(f"total deposit in tree_chroma: {tot / n_ev:.1f} keV/event (events ntuple: {edep.mean():.1f}); "
       f"inside the histogram range: {h_x.sum() / n_ev:.1f}")
+if tot > 0 and abs(tot - h_x.sum()) > 1e-3 * tot:
+    print(f"WARNING: {100 * (tot - h_x.sum()) / tot:.2f} % of the deposit lies outside the histogram range (x, check the manifest)")
 for c, e in sorted(by_pdg.items(), key=lambda kv: -kv[1])[:6]:
     print(f"  {name(c):>6}: {100 * e / tot:5.1f} % of the deposited energy ({e / n_ev:.1f} keV/event)")
 if "edepPlanes_keV" in ev:

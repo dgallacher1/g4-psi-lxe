@@ -35,6 +35,7 @@ has_origin = "creator" in fl                              # files from before th
 if has_origin:
     fl["creator"] = np.asarray(fl["creator"], dtype=str)
 
+running = {}                                              # plane name -> (u, v, weight, plane) of the weighted crossings
 fig, axes = plt.subplots(len(geo["planes"]), 4, figsize=(17, 4 * len(geo["planes"])), squeeze=False)
 for row, pl in enumerate(geo["planes"]):
     A = pl["area"]                                        # mm^2 (disc or rectangle, from the manifest)
@@ -43,6 +44,7 @@ for row, pl in enumerate(geo["planes"]):
     ent = m & (fl["entering"] == 1)
     cos = np.abs(fl["cosTheta"][ent])
     ok = cos > 1e-3                                       # guard grazing-angle divergence
+    running[pl["name"]] = (fl["u_mm"][ent][ok], fl["v_mm"][ent][ok], 1.0 / cos[ok], pl)
 
     phi_x = np.sum(1.0 / cos[ok]) / A / n_primaries
     phi_l = np.sum(fl["stepLen_mm"][m]) / (A * t) / n_primaries
@@ -85,3 +87,52 @@ for row, pl in enumerate(geo["planes"]):
 fig.tight_layout()
 fig.savefig("fluence.png", dpi=130)
 print("\nwrote fluence.png")
+
+# --- running fluence vs the major dimension of a centred region -------------------------------------
+# Phi(D) = (weighted crossings inside the region) / (region area) / N_primaries, where the region is the plane
+# shape scaled about its centre (a disc of diameter D, or a rectangle whose long side is D, same aspect ratio).
+# D -> full size gives the plane mean printed above; small D approaches the local fluence at the plane centre
+# ("peak" only if the beam lands there: SiPM1 yes, SiPM2 is off the beam axis). The band is the Poisson error
+# of the crossing count in the region; the curve starts at MIN_N crossings.
+MIN_N, PEAK_N = 10, 100
+fig2, ax2 = plt.subplots(figsize=(8.5, 5.5))
+colours = ["tab:blue", "tab:orange", "tab:green", "tab:red"]
+print("\nrunning fluence (centred regions), /mm^2/primary:")
+for (name, (u, v, w, pl)), col in zip(running.items(), colours):
+    hu, hv = pl["halfU"], pl["halfV"]
+    circ = bool(pl.get("circular", False))
+    s_i = np.hypot(u, v) / hu if circ else np.maximum(np.abs(u) / hu, np.abs(v) / hv)
+    order = np.argsort(s_i)
+    s_sorted, cum_w = s_i[order], np.cumsum(w[order])
+    d_full = 2 * hu if circ else 2 * max(hu, hv)           # diameter, or the long side
+    D = np.linspace(0.02 * d_full, d_full, 400)
+    s = D / d_full
+    n_in = np.searchsorted(s_sorted, s, side="right")      # crossings inside the region
+    phi = np.where(n_in > 0, cum_w[np.maximum(n_in - 1, 0)], np.nan) / (pl["area"] * s**2) / n_primaries
+    good = n_in >= MIN_N
+    if not good.any():
+        print(f"  {name}: fewer than {MIN_N} crossings, skipped")
+        continue
+    rel = 1.0 / np.sqrt(np.maximum(n_in, 1))
+    label = f"{name} ({'disc, diameter' if circ else 'rectangle, length'} {d_full:.0f} mm)"
+    ax2.plot(D[good], phi[good], color=col, lw=2, label=label)
+    ax2.fill_between(D[good], (phi * (1 - rel))[good], (phi * (1 + rel))[good], color=col, alpha=0.2, lw=0)
+    mean = phi[-1]
+    ax2.axhline(mean, color=col, ls="--", lw=0.8)
+    ax2.annotate(f"mean {mean:.2e}", (D[-1], mean), textcoords="offset points", xytext=(-4, 4),
+                 ha="right", fontsize=8, color=col)
+    pk = np.argmax(n_in >= PEAK_N) if (n_in >= PEAK_N).any() else None
+    if pk is not None:
+        ax2.plot(D[pk], phi[pk], "o", color=col)
+        print(f"  {name:>6}: mean {mean:.3e} | centre region D = {D[pk]:5.1f} mm ({n_in[pk]} crossings): {phi[pk]:.3e} "
+              f"| centre/mean {phi[pk] / mean:.1f}")
+    else:
+        print(f"  {name:>6}: mean {mean:.3e} | fewer than {PEAK_N} crossings in any centred region (no stable centre value)")
+ax2.set(xlabel="major dimension of the centred region: diameter (disc) or length (rectangle) [mm]",
+        ylabel="mean crossing fluence in the region [/mm$^2$/primary]", yscale="log",
+        title="running fluence: centred regions growing to the full plane")
+ax2.legend(loc="upper right")
+ax2.grid(True, which="both", alpha=0.25)
+fig2.tight_layout()
+fig2.savefig("fluence_running.png", dpi=130)
+print("wrote fluence_running.png")

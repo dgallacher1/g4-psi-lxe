@@ -38,6 +38,14 @@ Construction (all solids built in world coordinates, `include/GeometryBuilders.h
 clearance, nesting, foils inside their bores) and probes the real solids (port on -x only, bores
 cut, stub roots cut, on-axis foil thickness, LXe/vacuum extents, planes inside the LXe).
 
+Installed-position corrections for the inner SiPM2 assembly are named constants in the planes section of
+`GeometryParameters.hh`: the model has the SiPM2 silicon surface at z = -27 mm (`sipm2ModelSurfaceZ`), the actual assembly
+sits `innerAssemblyShiftZ` = -15 mm lower, so the surface is at `sipm2SurfaceZ` = -42 mm; `sipm2RotZdeg` = -5 deg is the
+5 deg clockwise (seen from above) alignment of the SiPM2 plane about its own centre. The alpha source rides on the inner
+assembly, so `sourceZ` = 0 + `innerAssemblyShiftZ` = -15 mm. SiPM1 is mounted to the flange (on the pipe) and is unchanged. `Validate()` refuses a
+plane that sticks out of the LXe (the planes are children of the LXe). The plane rotation is written to
+`geometry_manifest.json` (`"rot"`) and the plot scripts follow it.
+
 ## Materials
 NIST materials, except two custom ones defined in `src/Materials.cc` (the only place to edit a composition or density):
 `SS304` (all vessel walls, bottoms, tops, stubs and flanges; nominal 304 by mass: Cr 19, Ni 9.25, Mn 1, Si 0.5, trace C/P/S,
@@ -92,24 +100,7 @@ Switches (master commands, between runs): `/output/steps`, `/output/chroma`, `/o
 | `primary_path` | the beam particle's steps in every volume, see below |
 | `events` | per-event `edep_keV` (xenon), `nSteps`, `edepPlanes_keV` (silicon planes) |
 | `fluence` | every charged-particle step in the planes: plane id, local (u, v), entry KE, cos(theta) to normal, step length, `entering` flag |
-| `budget` | geantino scan: per (event, volume) length, X/X0, L/lambda, mass thickness, start (y0, z0) |
-
-The planes are real silicon, so they scatter and absorb: a plane upstream of another shadows it.
-
-Fluence per primary, per plane (`scripts/fluence.py`):
-crossing estimator `sum_entering 1/|cos| / A`, and track-length `sum(stepLen) / (A t)`.
-
-## Analysis
-```bash
-python scripts/fluence.py      xenon_sim.root geometry_manifest.json
-python scripts/budget_map.py   xenon_sim.root geometry_manifest.json
-python scripts/quick_look.py   xenon_sim.root
-```
-
-## Scope and known limits
-- Foil regions use a 2 um production cut (`WindowRegion`). EM option4 handles msc in thin foils;
-  validate energy loss through the Ti against expectation for your beam energy.
-- No bolt holes, knife edges, gaskets, MLI or cabling; no gas phase above the liquid level.
+| `budget` | geantino scan: pers phase above the liquid level.
 - Inner CF: no stub; the flange fills a wall opening of radius `flangeOR` and has a cavity-side pocket
   (`innerPocketR`) holding the SiPM, the Ti foil welded at the pocket floor. The LXe is built through the
   opening minus the flange metal. The SiPM holder, PCB, gasket and retaining ring are not modelled.

@@ -220,6 +220,31 @@ inline constexpr Window tiWindow = {
 inline constexpr const char* planeMaterial = "G4_Si";
 inline constexpr G4int nPlanes = 2;
 
+//  Installed-position corrections for the INNER ASSEMBLY (SiPM2 plane + alpha source; SiPM1 is on the flange and
+//  does not move).  Face-on photo + CAD measurement.
+//   * z: the model has the SiPM2 silicon surface 27 mm below the beam pipe centre (z = 0); the actual assembly sits
+//     15 mm lower, so the surface is at -27 + (-15) = -42 mm.  The plane is 0.05 mm thick with its +z face at the
+//     surface, so the plane centre is half a thickness lower.
+//   * rotation: the assembly is turned 5 deg clockwise seen from above = -5 deg (right-handed, active) about the
+//     central axis of z (the vessel axis, x = y = 0).  Positions on the assembly are rotated about that axis,
+//     SiPM2's orientation turns with it.
+//  Model (un-installed) positions are given first, the installed ones are computed from them.
+inline constexpr G4double innerAssemblyShiftZ  = -15.0*mm;
+inline constexpr G4double innerAssemblyRotZdeg = -5.0;
+
+// constexpr sin/cos (Taylor series; std::sin is not constexpr in C++17): accurate to ~1e-12 for |x| < pi
+constexpr G4double ConstSin(G4double x) { G4double t = x, r = x; for (int n = 1; n < 12; ++n) { t *= -x * x / ((2. * n) * (2. * n + 1.)); r += t; } return r; }
+constexpr G4double ConstCos(G4double x) { G4double t = 1., r = 1.; for (int n = 1; n < 12; ++n) { t *= -x * x / ((2. * n - 1.) * (2. * n)); r += t; } return r; }
+inline constexpr G4double asmCos = ConstCos(innerAssemblyRotZdeg * deg);
+inline constexpr G4double asmSin = ConstSin(innerAssemblyRotZdeg * deg);
+// (x, y) of a point of the inner assembly, rotated about the vessel axis
+constexpr G4double AsmX(G4double x, G4double y) { return x * asmCos - y * asmSin; }
+constexpr G4double AsmY(G4double x, G4double y) { return x * asmSin + y * asmCos; }
+
+inline constexpr G4double sipm2ModelSurfaceZ = -27.0*mm;
+inline constexpr G4double sipm2SurfaceZ      = sipm2ModelSurfaceZ + innerAssemblyShiftZ;   // = -42 mm
+inline constexpr G4double sipm2ModelX = 8.7*mm, sipm2ModelY = 0.*mm;                       // model centre (before the rotation)
+
 //  CAD positions use Fusion's X, which points TOWARD the port; ours points away
 //  from it, so x_here = -X_cad (a 180 deg turn about z; all CAD y are 0).
 inline constexpr PlaneSpec planes[nPlanes] = {
@@ -231,16 +256,21 @@ inline constexpr PlaneSpec planes[nPlanes] = {
   //        inner wall ID (x = +50), so the far edge is at x = 36.2 and the centre at 36.2 - 27.5 = 8.7.
   //        The real board is not rectangular: the length (y) is cut from 73 to 63 mm (halfV 31.5) so the
   //        corners fit in the cylinder (r = 48.0 mm); the SiPMs are inside this area.
-  //        z = -32.63 is the CAD board plane; the SiPM silicon may sit higher, check.  Thickness assumed.
-  {"SiPM2", 8.7*mm,        0.*mm,       -32.63*mm,      0.,          0.,          0.,         27.5*mm,       31.5*mm,       0.05*mm,         false}
+  //        z: silicon surface at sipm2SurfaceZ (-42 mm: model -27 mm, actual assembly 15 mm lower; the CAD board plane was -32.63).
+  //        Thickness assumed.
+  {"SiPM2", AsmX(sipm2ModelX, sipm2ModelY), AsmY(sipm2ModelX, sipm2ModelY), sipm2SurfaceZ - 0.025*mm, 0., 0., innerAssemblyRotZdeg, 27.5*mm, 31.5*mm, 0.05*mm, false}
 };
 
 // ----------------------------------------------------------------------------
 //  6. Alpha source (GDML) placement inside the LXe   (CAD X = +30.31 -> x = -30.31)
 // ----------------------------------------------------------------------------
-inline constexpr G4double sourceX = -30.31*mm;
-inline constexpr G4double sourceY = 0.*mm;
-inline constexpr G4double sourceZ = 0.*mm;
+inline constexpr G4double sourceModelX = -30.31*mm;   // model position (CAD X = +30.31)
+inline constexpr G4double sourceModelY = 0.*mm;
+inline constexpr G4double sourceModelZ = 0.*mm;
+// The source rides on the inner assembly: shifted in z, and rotated about the vessel axis.
+inline constexpr G4double sourceX = AsmX(sourceModelX, sourceModelY);
+inline constexpr G4double sourceY = AsmY(sourceModelX, sourceModelY);
+inline constexpr G4double sourceZ = sourceModelZ + innerAssemblyShiftZ;
 
 // ----------------------------------------------------------------------------
 //  7. Environment and numerics
@@ -295,50 +325,7 @@ inline std::vector<std::string> Validate()
     fin(n + ".cavityZmax", v.cavityZmax); fin(n + ".wallT", v.wallT);
     fin(n + ".bottomT", v.bottomT);       fin(n + ".topT", v.topT);
   };
-  auto finPort = [&](const std::string& n, const Port& p) {
-    fin(n + ".boreR", p.boreR);     fin(n + ".stubOR", p.stubOR);
-    fin(n + ".flangeOR", p.flangeOR);
-    fin(n + ".flangeS0", p.flangeS0); fin(n + ".flangeS1", p.flangeS1);
-  };
-  finVessel("outer", outer);
-  finVessel("inner", inner);
-  finPort("outerPort", outerPort);
-  finPort("innerPort", innerPort);
-  fin("alWindow.thickness", alWindow.thickness); fin("alWindow.outerFaceS", alWindow.outerFaceS);
-  fin("tiWindow.thickness", tiWindow.thickness); fin("tiWindow.outerFaceS", tiWindow.outerFaceS);
-  if (sleeve.use) {
-    fin("sleeve.IR", sleeve.IR); fin("sleeve.OR", sleeve.OR);
-    fin("sleeve.s0", sleeve.s0); fin("sleeve.s1", sleeve.s1);
-  }
-  for (G4int i = 0; i < nPlanes; ++i) {
-    const auto& p = planes[i];
-    const std::string n = std::string("planes[") + std::to_string(i) + "] (" + p.name + ")";
-    fin(n + ".cx", p.cx); fin(n + ".cy", p.cy); fin(n + ".cz", p.cz);
-    fin(n + ".rotX", p.rotXdeg); fin(n + ".rotY", p.rotYdeg); fin(n + ".rotZ", p.rotZdeg);
-    fin(n + ".halfU", p.halfU); fin(n + ".halfV", p.halfV); fin(n + ".thickness", p.thickness);
-  }
-  fin("sourceX", sourceX); fin("sourceY", sourceY); fin("sourceZ", sourceZ);
-  if (!bad.empty()) return bad;           // geometric checks are meaningless with NaNs
-
-  auto req = [&](G4bool ok, const std::string& msg) { if (!ok) bad.push_back(msg); };
-
-  // --- basic sanity -------------------------------------------------------
-  for (const Vessel* v : {&outer, &inner}) {
-    const std::string n = (v == &outer) ? "outer" : "inner";
-    req(v->cavityR > 0 && v->wallT > 0 && v->bottomT > 0 && v->topT > 0,
-        n + ": radii/thicknesses must be > 0");
-    req(v->cavityZmax > v->cavityZmin, n + ": cavityZmax must exceed cavityZmin");
-  }
-  req(outerPort.boreR > 0 && outerPort.boreR < outerPort.stubOR && outerPort.stubOR < outerPort.flangeOR,
-      "outerPort: need 0 < boreR < stubOR < flangeOR");
-  req(innerPort.boreR > 0 && innerPort.boreR < innerPocketR && innerPocketR < innerPort.flangeOR,
-      "innerPort: need 0 < boreR < innerPocketR < flangeOR");
-  for (const Port* p : {&outerPort, &innerPort})
-    req(p->flangeS1 > p->flangeS0, (p == &outerPort ? "outerPort" : "innerPort") + std::string(": flangeS1 must exceed flangeS0"));
-
-  // --- nesting ------------------------------------------------------------
-  req(innerR() + 1.*mm <= outer.cavityR, "inner vessel (incl. wall) must fit inside the outer cavity with >= 1 mm clearance");
-  req(inner.cavityZmin - inner.bottomT > outer.cavityZmin, "inner vessel bottom plate collides with the outer cavity");
+  auto finPort = [&](const std::string& n, const Port& outer.cavityZmin, "inner vessel bottom plate collides with the outer cavity");
   req(inner.cavityZmax + inner.topT    < outer.cavityZmax, "inner vessel top plate collides with the outer cavity");
 
   // --- port geometry ------------------------------------------------------
