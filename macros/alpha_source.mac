@@ -1,0 +1,81 @@
+# Am-241 alpha source (W wire + foil wrap in gdml/alpha_source.gdml, submerged in the LXe):   ./xenonSim macros/alpha_source.mac
+# -> xenon_sim_alpha.root.  Analyse with  python scripts/alpha_look.py xenon_sim_alpha.root
+#
+# What is simulated: one alpha per event, drawn from the three main Am-241 lines (3 GPS sources, chosen per event by
+# their relative intensity), emitted isotropically from the emitting layer (a thin shell, PV "activePV", under a cover) at the
+# source position.  Alphas emitted inward stop in the foil / wire and leave no LXe deposit; the others lose energy
+# in the layer first, so what reaches the LXe is a peak below the line energy with a low-energy tail.
+# The source is a THIN emitter (tAct, sub-um) under a gold cover (tCover) in gdml/alpha_source.gdml: tCover sets the peak position,
+# tAct the width.  Tune tCover to the vacuum MPV (compare the exit energy from alpha_look.py).  Wire = 100 um W.
+# NOT simulated: the 59.54 keV gamma (35.9 % of decays, deposits ~1 % of an alpha's energy in the LXe), the weak lines
+# (0.6 %), the 92 keV Np-237 recoil and the decay chain.  The primary is the alpha itself, no radioactive decay.
+#
+# Lines (rounded NNDC/ENSDF values; evaluations differ by ~0.5 % absolute in the intensities):
+#   5485.56 keV  84.8 %      5442.80 keV  13.1 %      5388.23 keV  1.66 %      GPS normalises the sum (99.56 %).
+#
+# SOURCE POSITION: the three numbers below must equal Geo::sourceX/Y/Z in GeometryParameters.hh (installed position:
+# model (-30.31, 0, 0) rotated by -5 deg about z and shifted by -15 mm in z).  If they do not match, no point of the
+# sampling cylinder lies in the layer and GPS stops with a confinement warning (or the alphas start in the wrong place):
+# alpha_look.py prints the mean start point and checks it.
+/run/initialize
+
+/control/alias sx -30.194661
+/control/alias sy 2.641691
+/control/alias sz -15.0
+
+/beam/mode gps
+
+# ---- line 1: 5485.56 keV, 84.8 % (the default GPS source 0) ---------------------------------------------------
+/gps/source/intensity 0.848
+/gps/particle alpha
+/gps/ene/type Mono
+/gps/ene/mono 5485.56 keV
+/gps/ene/sigma 0 keV
+/gps/ang/type iso
+/gps/pos/type Volume
+/gps/pos/shape Cylinder
+/gps/pos/centre {sx} {sy} {sz} mm
+/gps/pos/radius 0.08 mm
+/gps/pos/halfz 0.51 mm
+/gps/pos/confine activePV
+
+# ---- line 2: 5442.80 keV, 13.1 % ------------------------------------------------------------------------------
+/gps/source/add 0.131
+/gps/particle alpha
+/gps/ene/type Mono
+/gps/ene/mono 5442.80 keV
+/gps/ene/sigma 0 keV
+/gps/ang/type iso
+/gps/pos/type Volume
+/gps/pos/shape Cylinder
+/gps/pos/centre {sx} {sy} {sz} mm
+/gps/pos/radius 0.08 mm
+/gps/pos/halfz 0.51 mm
+/gps/pos/confine activePV
+
+# ---- line 3: 5388.23 keV, 1.66 % ------------------------------------------------------------------------------
+/gps/source/add 0.0166
+/gps/particle alpha
+/gps/ene/type Mono
+/gps/ene/mono 5388.23 keV
+/gps/ene/sigma 0 keV
+/gps/ang/type iso
+/gps/pos/type Volume
+/gps/pos/shape Cylinder
+/gps/pos/centre {sx} {sy} {sz} mm
+/gps/pos/radius 0.08 mm
+/gps/pos/halfz 0.51 mm
+/gps/pos/confine activePV
+
+# ---- output -----------------------------------------------------------------------------------------------------
+# primary_path stays on: it gives the alpha's start point and its energy on leaving the source, which is what the
+# vacuum spectrometer measures.  About half of the events (alpha into the needle) have no LXe deposit.
+/output/tag alpha
+/output/chroma true
+/output/fuse false
+/output/steps false
+/output/path true
+/lxe/onlyEdep true
+/random/setSeeds 20261022 2
+/run/printProgress 10000
+/run/beamOn 100000

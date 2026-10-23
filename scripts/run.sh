@@ -3,6 +3,7 @@
 #
 #   bash scripts/run.sh                      # macros/lxe_focused.mac
 #   bash scripts/run.sh macros/other.mac     # another run macro (it must contain /output/tag <tag>)
+#   SCRIPTS=alpha_look.py bash scripts/run.sh macros/alpha_source.mac     # the Am-241 alpha run and its analysis
 #   nohup bash scripts/run.sh > run_all.log 2>&1 &     # leave it running; follow with: tail -f run_all.log
 #
 # Everything the run writes (ROOT file, run_info.json, geometry_manifest.json, PNGs, logs) lands in
@@ -12,6 +13,7 @@
 # Settings (environment variables, defaults in brackets):
 #   REPO [~/packages/geant4/g4-psi]   BUILD [$REPO/build]   SCRATCH_ROOT [/scratch/dgallacher/psi-beam-sims]
 #   G4SH [~/packages/geant4/g4-install/v11.4.2/bin/geant4.sh]   CONDA_ENV [muon_lgad]   MIN_FREE_GB [60]
+#   SCRIPTS ["lxe_look.py fluence.py"]   (the analysis scripts to run, each called with <root file> geometry_manifest.json)
 set -eo pipefail
 
 REPO=${REPO:-$HOME/packages/geant4/g4-psi}
@@ -21,6 +23,7 @@ G4SH=${G4SH:-$HOME/packages/geant4/g4-install/v11.4.2/bin/geant4.sh}
 CONDA_ENV=${CONDA_ENV:-muon_lgad}
 MIN_FREE_GB=${MIN_FREE_GB:-60}
 PY=${PY:-python}
+SCRIPTS=${SCRIPTS:-"lxe_look.py fluence.py"}      # analysis scripts, run in this order from $REPO/scripts
 SKIP_SIM=${SKIP_SIM:-0}
 MACRO=${1:-macros/lxe_focused.mac}
 
@@ -80,10 +83,10 @@ fi
 . "$CONDA_SH"
 conda activate "$CONDA_ENV"
 
-echo; echo "=== lxe_look.py ==="
-$PY "$REPO/scripts/lxe_look.py" "$ROOT" geometry_manifest.json 2>&1 | tee lxe_look.out
-echo; echo "=== fluence.py ==="
-$PY "$REPO/scripts/fluence.py" "$ROOT" geometry_manifest.json 2>&1 | tee fluence.out
+for S in $SCRIPTS; do
+  echo; echo "=== $S ==="
+  $PY "$REPO/scripts/$S" "$ROOT" geometry_manifest.json 2>&1 | tee "${S%.py}.out"
+done
 
 echo; echo "done after ${SECONDS} s; files in $OUT:"
 ls -lh "$OUT"

@@ -1,44 +1,84 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Alpha source: a thin needle, 1 mm long, 50 um diameter (approximate, from the user).
-  Stand-in, not CAD: the material and the active layer are PLACEHOLDERS (see below).
+  Alpha source: 100 um tungsten wire with the Am-241 foil wrap, 1 mm long, 150 um outer diameter.
+  Dimensions from the microscope photo (19 px wire : 28 px wrap, 190 px = 1.02 mm) and the CAD model.
+  Stand-in, not CAD: the slot / overlap of the real wrap is not modelled, the wrap is a full cylinder.
 
-  The code extracts the logical volume "AlphaSourceLV" by name and places it inside the LXe at
-  Geo::sourceX/Y/Z (GeometryParameters.hh), with no rotation: the GDML tube axis (local z) is the
-  vessel axis (world z).  It also looks up "ActiveLayerLV" by name for the colouring, so keep both
-  names.  The <setup>/<world> below only makes the file valid on its own.
+  Nesting (all concentric, axis = local z = world z), from the inside out:
+    wirePV     tungsten wire, r = 0 .. wireR                              (volume WireLV)
+    (foil)     gold, the rest of AlphaSourceLV: r = wireR .. foilR         (inert)
+    activePV   thin emitting layer, r = foilR .. foilR + tAct              (volume ActiveLayerLV, gold)
+    coverPV    cover over the emitter, r = foilR + tAct .. sleeveR         (volume CoverLV, gold)
+  AlphaSourceLV is the gold cylinder r = 0 .. sleeveR that holds all of them (placed by the code as PV
+  "AlphaSource").  The code extracts "AlphaSourceLV" and "ActiveLayerLV" by name (both must exist: a missing
+  volume is a fatal GDML error) and places AlphaSourceLV inside the LXe at Geo::sourceX/Y/Z, with no rotation.
+  macros/alpha_source.mac confines the GPS to the PV "activePV".  The setup/world element at the end only
+  makes the file valid on its own.
 
-  PLACEHOLDERS to replace when known:
-    * needle material: G4_STAINLESS-STEEL
-    * active layer: a 1 um gold sleeve on the outside of the needle (where an Am-241 deposit would
-      sit); the real deposit, if any, goes here
+  WHY A THIN EMITTER UNDER A COVER: the vacuum spectrum is a narrow peak 0.66 MeV below the line with a 1/L^2-like
+  tail.  A thick emitting layer (uniform emission depth) gives a flat plateau instead; a thin emitter under a
+  uniform cover gives an edge at (line - normal-incidence loss) and the 1/cos(theta) tail of the geometry.
+
+  KNOBS (the define block; lengths in mm):
+    tCover  cover thickness.  PLACEHOLDER material G4_Au.  Sets the peak position: tune it to the vacuum MPV.
+    tAct    emitter thickness (sub-um).  Sets the width of the peak (depth spread).
+    wireR, sleeveR  from the photo scale.
+  If tCover or tAct is changed, alpha_look.py R_IN/R_OUT must follow:
+    R_OUT = sleeveR - tCover,  R_IN = sleeveR - tCover - tAct.
 
   Material names use the G4_* NIST convention (resolved by G4NistManager).
 -->
 <gdml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       xsi:noNamespaceSchemaLocation="http://service-spi.web.cern.ch/service-spi/app/releases/GDML/schema/gdml.xsd">
 
-  <define/>
+  <define>
+    <constant name="wireR"   value="0.050"/>
+    <constant name="sleeveR" value="0.075"/>
+    <constant name="tCover"  value="0.0010"/>
+    <constant name="tAct"    value="0.0002"/>
+    <constant name="actOutR" value="sleeveR-tCover"/>
+    <constant name="foilR"   value="sleeveR-tCover-tAct"/>
+  </define>
   <materials/>
 
   <solids>
     <!-- GDML tube 'z' is the FULL length (Geant4 halves it internally). -->
-    <tube name="needleSolid" rmin="0"      rmax="0.025" z="1.0" deltaphi="360" aunit="deg" lunit="mm"/>
-    <tube name="activeSolid" rmin="0.024"  rmax="0.025" z="1.0" deltaphi="360" aunit="deg" lunit="mm"/>
+    <tube name="sourceSolid" rmin="0"      rmax="sleeveR" z="1.0" deltaphi="360" aunit="deg" lunit="mm"/>
+    <tube name="coverSolid"  rmin="actOutR" rmax="sleeveR" z="1.0" deltaphi="360" aunit="deg" lunit="mm"/>
+    <tube name="activeSolid" rmin="foilR"  rmax="actOutR" z="1.0" deltaphi="360" aunit="deg" lunit="mm"/>
+    <tube name="wireSolid"   rmin="0"      rmax="wireR"   z="1.0" deltaphi="360" aunit="deg" lunit="mm"/>
   </solids>
 
   <structure>
+    <volume name="WireLV">
+      <materialref ref="G4_W"/>
+      <solidref ref="wireSolid"/>
+    </volume>
+
     <volume name="ActiveLayerLV">
       <materialref ref="G4_Au"/>
       <solidref ref="activeSolid"/>
     </volume>
 
+    <volume name="CoverLV">
+      <materialref ref="G4_Au"/>
+      <solidref ref="coverSolid"/>
+    </volume>
+
     <volume name="AlphaSourceLV">
-      <materialref ref="G4_STAINLESS-STEEL"/>
-      <solidref ref="needleSolid"/>
+      <materialref ref="G4_Au"/>
+      <solidref ref="sourceSolid"/>
+      <physvol name="wirePV">
+        <volumeref ref="WireLV"/>
+        <position name="wirePos" unit="mm" x="0" y="0" z="0"/>
+      </physvol>
       <physvol name="activePV">
         <volumeref ref="ActiveLayerLV"/>
         <position name="activePos" unit="mm" x="0" y="0" z="0"/>
+      </physvol>
+      <physvol name="coverPV">
+        <volumeref ref="CoverLV"/>
+        <position name="coverPos" unit="mm" x="0" y="0" z="0"/>
       </physvol>
     </volume>
   </structure>
